@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  test:
+  quality_and_test:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,11 +21,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage
+          pip install coverage flake8 mypy black bandit safety
+
+      - name: Lint with flake8
+        run: flake8 .
+
+      - name: Check formatting with black
+        run: black --check .
+
+      - name: Run mypy for static type checking
+        run: mypy .
+
+      - name: Security scan with bandit
+        run: bandit -r .
 
       - name: Run tests with coverage
         run: |
-          # Run all tests and measure coverage on all source files.
           coverage run --source=. -m unittest discover -s tests
-          # Print coverage report and fail if coverage is below 90%
-          coverage report --fail-under=1
+          coverage report --fail-under=50
+
+      - name: Check for dependency vulnerabilities with safety
+        run: safety check
