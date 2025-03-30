@@ -15,7 +15,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] [Thread: %(threadName)s] %(message)s"
 )
 
-
 # ----------------------------------------------------------------------
 # Custom Exceptions
 # ----------------------------------------------------------------------
@@ -42,6 +41,15 @@ class GraphConfigurationError(GraphOrchestratorException):
 class GraphExecutionError(Exception):
     def __init__(self, node_id: str, message: str) -> None:
         super().__init__(f"Error executing node '{node_id}': {message}")
+
+# ----------------------------------------------------------------------
+# Retry Policy Class
+# ----------------------------------------------------------------------
+@dataclass
+class RetryPolicy:
+    max_retries: int = 3       # maximum number of retries
+    delay: float = 1.0         # initial delay in seconds
+    backoff: float = 2.0       # factor by which the delay is multiplied on each retry
 
 # ----------------------------------------------------------------------
 # State Class
@@ -91,6 +99,7 @@ class ProcessingNode(Node):
     def __init__(self, node_id: str, func: Callable[[State], State]) -> None:
         super().__init__(node_id)
         self.func: Callable[[State], State] = func
+        func_name = getattr(func, '__name__', func.__class__.__name__)
         logging.info(f"ProcessingNode '{self.node_id}' created with processing function '{func.__name__}'.")
 
     def execute(self, state: State) -> State:
@@ -262,7 +271,7 @@ class GraphBuilder:
 # GraphExecutor Class
 # ----------------------------------------------------------------------
 class GraphExecutor:
-    def __init__(self, graph: Graph, initial_state: State, max_workers: int = 4) -> None:
+    def __init__(self, graph: Graph, initial_state: State, max_workers: int = 4, retry_policy: Optional[RetryPolicy] = None) -> None:
         logging.info("Initializing GraphExecutor...")
         self.graph: Graph = graph
         self.initial_state: State = initial_state
@@ -271,7 +280,23 @@ class GraphExecutor:
         # Map node_id to list of states pending execution.
         self.active_states: Dict[str, List[State]] = defaultdict(list)
         self.active_states[graph.start_node.node_id].append(initial_state)
+        self.retry_policy: RetryPolicy = retry_policy if retry_policy is not None else RetryPolicy()
         logging.info(f"GraphExecutor initialized. Starting at node '{graph.start_node.node_id}' with initial state: {initial_state}")
+
+    def execute_node_with_retry(self, node: Node, input_data: Any, retry_policy: RetryPolicy) -> Any:
+        attempt = 0
+        current_delay = retry_policy.delay
+        while attempt <= retry_policy.max_retries:
+            try:
+                return node.execute(input_data)
+            except Exception as e:
+                if attempt == retry_policy.max_retries:
+                    logging.error(f"Node '{node.node_id}' failed after {attempt + 1} attempts: {e}")
+                    raise e
+                logging.warning(f"Node '{node.node_id}' execution failed on attempt {attempt + 1} with error: {e}. Retrying in {current_delay} seconds...")
+                time.sleep(current_delay)
+                current_delay *= retry_policy.backoff
+                attempt += 1
 
     def execute(self, max_supersteps: int = 100) -> Optional[State]:
         logging.info("Beginning graph execution...")
@@ -287,13 +312,14 @@ class GraphExecutor:
             for node_id, states in self.active_states.items():
                 node = self.graph.nodes[node_id]
                 logging.info(f"Dispatching node '{node_id}' with {len(states)} state(s).")
+                # Wrap execution with the retry policy.
                 if isinstance(node, AggregatorNode):
-                    futures.append((node_id, self.executor.submit(node.execute, states)))
+                    futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, states, self.retry_policy)))
                 else:
                     if len(states) != 1:
                         logging.warning(f"ProcessingNode '{node_id}' received multiple states; using the first state.")
                     state = states[0]
-                    futures.append((node_id, self.executor.submit(node.execute, state)))
+                    futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, state, self.retry_policy)))
 
             # Process results and route output state along outgoing edges.
             for node_id, future in futures:
@@ -323,4 +349,3 @@ class GraphExecutor:
             raise GraphExecutionError("N/A", "Maximum supersteps reached without termination.")
         logging.info("Graph execution completed successfully.")
         return final_state
-    
