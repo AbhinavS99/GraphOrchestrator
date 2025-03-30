@@ -6,6 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional
+from enum import Enum
+from collections import deque, defaultdict
+import matplotlib.pyplot as plt
+from matplotlib.patches import FancyArrowPatch, Circle
 
 # ----------------------------------------------------------------------
 # Logging Configuration
@@ -349,3 +353,196 @@ class GraphExecutor:
             raise GraphExecutionError("N/A", "Maximum supersteps reached without termination.")
         logging.info("Graph execution completed successfully.")
         return final_state
+
+# ----------------------------------------------------------------------
+# Representational Graph Classes for Visualization
+# ----------------------------------------------------------------------
+class RepresentationalEdgeType(Enum):
+    ConcreteEdgeRepresentation = 1
+    ConditionalEdgeRepresentation = 2  # Note: using the provided spelling; adjust to "ConditionalEdgeRepresentation" if desired.
+
+class RepresentationalNode:
+    """
+    A representation of an actual node in the graph.
+    Each node has an id, a node type (e.g., 'processing' or 'aggregator'),
+    and maintains lists of incoming and outgoing representational edges.
+    """
+    def __init__(self, node_id: str, node_type: str):
+        self.node_id = node_id
+        self.node_type = node_type
+        self.incoming_edges: list[RepresentationalEdge] = []
+        self.outgoing_edges: list[RepresentationalEdge] = []
+
+    def __repr__(self) -> str:
+        return f"RepresentationalNode(id={self.node_id}, type={self.node_type})"
+
+class RepresentationalEdge:
+    """
+    A representation of an edge between two nodes in the graph.
+    Contains source and sink RepresentationalNode objects and an edge type.
+    """
+    def __init__(self, source: RepresentationalNode, sink: RepresentationalNode, edge_type: RepresentationalEdgeType):
+        self.source = source
+        self.sink = sink
+        self.edge_type = edge_type
+
+    def __repr__(self) -> str:
+        return f"RepresentationalEdge(source={self.source.node_id}, sink={self.sink.node_id}, type={self.edge_type.name})"
+
+class RepresentationalGraph:
+    """
+    A collection of representational nodes and edges.
+    Includes a helper method to convert an existing Graph (from GraphExecutorStatic)
+    into a representational graph.
+    """
+    def __init__(self):
+        # Use a dict for quick lookup by node id.
+        self.nodes: dict[str, RepresentationalNode] = {}
+        self.edges: list[RepresentationalEdge] = []
+
+    @staticmethod
+    def from_graph(graph: Graph) -> "RepresentationalGraph":
+        rep_graph = RepresentationalGraph()
+        # Create representational nodes.
+        for node_id, node in graph.nodes.items():
+            if hasattr(node, "func"):  # simple way to check for ProcessingNode
+                node_type = "processing"
+            elif node.__class__.__name__ == "AggregatorNode":
+                node_type = "aggregator"
+            else:
+                node_type = "node"
+            rep_node = RepresentationalNode(node_id, node_type)
+            rep_graph.nodes[node_id] = rep_node
+
+        # Create edges for concrete edges.
+        for edge in graph.concrete_edges:
+            src = rep_graph.nodes[edge.source.node_id]
+            sink = rep_graph.nodes[edge.sink.node_id]
+            rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.ConcreteEdgeRepresentation)
+            rep_graph.edges.append(rep_edge)
+            src.outgoing_edges.append(rep_edge)
+            sink.incoming_edges.append(rep_edge)
+            
+        # Create edges for conditional edges (one for each branch).
+        for cond_edge in graph.conditional_edges:
+            src = rep_graph.nodes[cond_edge.source.node_id]
+            for sink_node in cond_edge.sinks:
+                sink = rep_graph.nodes[sink_node.node_id]
+                rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.ConditionalEdgeRepresentation)
+                rep_graph.edges.append(rep_edge)
+                src.outgoing_edges.append(rep_edge)
+                sink.incoming_edges.append(rep_edge)
+                
+        return rep_graph
+
+class GraphVisualizer:
+    """
+    Visualizes the representational graph using a level-order layout starting from the 'start' node.
+    - Nodes are arranged from top (start) to bottom.
+    - Each node displays its id; aggregator nodes are given a distinct color.
+    - Concrete edges are drawn as straight arrows while conditional edges are drawn as curved arrows.
+    """
+    def __init__(self, rep_graph):
+        self.rep_graph = rep_graph
+
+    def _compute_levels(self) -> dict[str, int]:
+        """
+        Computes level order (BFS) levels starting from the 'start' node.
+        Returns a mapping from node_id to its level.
+        """
+        levels = {}
+        start_id = "start"
+        if start_id not in self.rep_graph.nodes:
+            raise ValueError("No 'start' node found in the representational graph.")
+        
+        queue = deque([(start_id, 0)])
+        visited = set()
+        
+        while queue:
+            node_id, level = queue.popleft()
+            if node_id in visited:
+                continue
+            visited.add(node_id)
+            levels[node_id] = level
+            node = self.rep_graph.nodes[node_id]
+            for edge in node.outgoing_edges:
+                queue.append((edge.sink.node_id, level + 1))
+        
+        return levels
+
+    def visualize(self) -> None:
+        levels = self._compute_levels()
+        
+        # Group nodes by level.
+        level_nodes = defaultdict(list)
+        for node_id, level in levels.items():
+            level_nodes[level].append(node_id)
+
+        # Assign positions for each node: x-coordinate spread within the level; y-coordinate based on level.
+        pos = {}
+        for level, nodes in level_nodes.items():
+            count = len(nodes)
+            for i, node_id in enumerate(sorted(nodes)):
+                x = i - (count - 1) / 2.0  # center nodes horizontally at each level
+                y = -level  # level 0 at the top
+                pos[node_id] = (x, y)
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # Draw nodes as circles.
+        for node_id, (x, y) in pos.items():
+            node = self.rep_graph.nodes[node_id]
+            # Use a different color for aggregator nodes.
+            if node.node_type == "aggregator":
+                color = "lightcoral"
+            else:
+                color = "lightblue"
+            
+            circle = Circle(
+                (x, y), 
+                radius=0.3, 
+                color=color, 
+                ec="black", 
+                zorder=2
+            )
+            ax.add_patch(circle)
+            ax.text(x, y, node_id, ha="center", va="center", zorder=3)
+
+        # Draw edges with arrows.
+        for edge in self.rep_graph.edges:
+            src_id = edge.source.node_id
+            sink_id = edge.sink.node_id
+            start_pos = pos[src_id]
+            end_pos = pos[sink_id]
+
+            # Decide arrow style based on edge type.
+            if edge.edge_type.name == "ConcreteEdgeRepresentation":
+                # Straight arrow, e.g., color='gray'
+                color = "gray"
+                connection_style = "arc3,rad=0.0"  # no curvature
+                line_style = "solid"
+            else:
+                # Conditional edge: curved arrow, e.g., color='orange'
+                color = "orange"
+                connection_style = "arc3,rad=0.2"  # curved
+                line_style = "dashed"
+
+            arrow = FancyArrowPatch(
+                start_pos, 
+                end_pos,
+                arrowstyle='-|>',         # a triangular arrowhead
+                mutation_scale=15,        # size of arrowhead
+                color=color,
+                linewidth=2,
+                linestyle=line_style,
+                connectionstyle=connection_style,
+                shrinkA=15,               # space between arrow start and node center
+                shrinkB=15,               # space between arrow end and node center
+                zorder=1
+            )
+            ax.add_patch(arrow)
+
+        ax.autoscale()
+        ax.axis('off')
+        plt.tight_layout()
+        plt.show()
