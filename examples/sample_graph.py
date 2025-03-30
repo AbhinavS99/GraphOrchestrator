@@ -12,6 +12,8 @@ from core.GraphExecutorStatic import (
     routing_function,
     RetryPolicy,
 )
+# Import the new visualization classes.
+from core.GraphExecutorStatic import RepresentationalGraph, GraphVisualizer
 
 def node1_func(state: State) -> State:
     """
@@ -59,7 +61,7 @@ def route1(state: State) -> str:
 
 def main() -> None:
     """
-    Build and execute a sample graph using the GraphExecutor with a retry policy.
+    Build, visualize, and execute a sample graph using the GraphExecutor with a retry policy.
     
     Graph Structure:
       - Two aggregator nodes (aggregator1, aggregator2)
@@ -115,8 +117,12 @@ def main() -> None:
     # Validate and build the graph.
     graph = builder.build_graph()
 
+    # Create and visualize the representational graph.
+    rep_graph = RepresentationalGraph.from_graph(graph)
+    visualizer = GraphVisualizer(rep_graph)
+    visualizer.visualize()
+
     # Define an initial state.
-    # Change "route" to "aggregator1" to loop back if desired.
     initial_state = State(data={"route": "end"})
 
     # Define a retry policy: maximum 3 retries, starting delay 0.5 sec, doubling delay on each retry.
