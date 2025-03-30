@@ -3,6 +3,7 @@ import copy
 import time
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional
@@ -302,10 +303,11 @@ class GraphExecutor:
                 current_delay *= retry_policy.backoff
                 attempt += 1
 
-    def execute(self, max_supersteps: int = 100) -> Optional[State]:
+    def execute(self, max_supersteps: int = 100, superstep_timeout: float = 300.0) -> Optional[State]:
         logging.info("Beginning graph execution...")
         superstep: int = 0
         final_state: Optional[State] = None
+
         while self.active_states and superstep < max_supersteps:
             logging.info(f"\n=== Superstep {superstep} ===")
             logging.info(f"Active nodes for execution: {list(self.active_states.keys())}")
@@ -316,19 +318,17 @@ class GraphExecutor:
             for node_id, states in self.active_states.items():
                 node = self.graph.nodes[node_id]
                 logging.info(f"Dispatching node '{node_id}' with {len(states)} state(s).")
-                # Wrap execution with the retry policy.
+
                 if isinstance(node, AggregatorNode):
                     futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, states, self.retry_policy)))
                 else:
-                    if len(states) != 1:
-                        logging.warning(f"ProcessingNode '{node_id}' received multiple states; using the first state.")
                     state = states[0]
                     futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, state, self.retry_policy)))
 
-            # Process results and route output state along outgoing edges.
+            # Process results with timeout
             for node_id, future in futures:
                 try:
-                    result_state = future.result()
+                    result_state = future.result(timeout=superstep_timeout)
                     logging.info(f"Node '{node_id}' completed execution with result: {result_state}")
                     node = self.graph.nodes[node_id]
                     for edge in node.outgoing_edges:
@@ -340,17 +340,25 @@ class GraphExecutor:
                             chosen_node_id = edge.routing_function(result_state)
                             next_active_states[chosen_node_id].append(copy.deepcopy(result_state))
                             logging.info(f"State routed from '{node_id}' to '{chosen_node_id}' via conditional edge.")
+
                     if node_id == self.graph.end_node.node_id:
                         final_state = result_state
+
+                except concurrent.futures.TimeoutError:
+                    logging.error(f"Execution of node '{node_id}' timed out after {superstep_timeout} seconds.")
+                    raise GraphExecutionError(node_id, f"Node execution timed out after {superstep_timeout} seconds.")
+
                 except Exception as e:
                     logging.error(f"Exception during execution of node '{node_id}': {e}")
                     raise GraphExecutionError(node_id, str(e))
+
             self.active_states = next_active_states
             superstep += 1
 
         if superstep >= max_supersteps:
             logging.error("Graph execution terminated: maximum supersteps reached without termination.")
             raise GraphExecutionError("N/A", "Maximum supersteps reached without termination.")
+
         logging.info("Graph execution completed successfully.")
         return final_state
 
