@@ -3,6 +3,7 @@ import copy
 import time
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
 import concurrent.futures
 from dataclasses import dataclass, field
 from collections import defaultdict
@@ -58,6 +59,16 @@ class InvalidRoutingFunctionOutput(GraphOrchestratorException):
         super().__init__(f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
 
+class NodeActionNotDecoratedError(GraphOrchestratorException):
+    def __init__(self, func: Callable):
+        func_name = getattr(func, '__name__', repr(func))
+        super().__init__(f"The function '{func_name}' passed to ProcessingNode must be decorated with @node_action.")
+
+class RoutingFunctionNotDecoratedError(GraphOrchestratorException):
+    def __init__(self, func: Callable):
+        func_name = getattr(func, '__name__', repr(func))
+        super().__init__(f"The function '{func_name}' passed to ConditionalEdge must be decorated with @routing_function.")
+
 # ----------------------------------------------------------------------
 # Retry Policy Class
 # ----------------------------------------------------------------------
@@ -72,17 +83,22 @@ class RetryPolicy:
 # ----------------------------------------------------------------------
 @dataclass
 class State:
-    data: Dict[str, Any] = field(default_factory=dict)
+    messages: List[Any] = field(default_factory=list)
     def __repr__(self) -> str:
-        return f"State({self.data})"
+        return f"State({self.messages})"
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, State):
+            return NotImplemented
+        return self.messages == other.messages
 
 # ----------------------------------------------------------------------
-# Routing Function Validator Decorator
+# Decorators
 # ----------------------------------------------------------------------
 def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
     """
     Decorator to ensure a routing function returns a single string.
     """
+    @wraps(func)
     def wrapper(state: State) -> str:
         logging.info(f"Routing function '{func.__name__}' invoked with state: {state}")
         result = func(state)
@@ -91,10 +107,25 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
             raise InvalidRoutingFunctionOutput(result)
         logging.info(f"Routing function '{func.__name__}' returned '{result}' for state: {state}")
         return result
+    wrapper._is_routing_function = True
     return wrapper
 
+def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
+    """
+    Decorator to mark a function as a valid node action.
+    """
+    setattr(func, "_is_node_action", True)
+    return func
+
 # ----------------------------------------------------------------------
-# Abstract Node Base Class
+# Pass Through - function decorated to pass the state unchanged
+# ----------------------------------------------------------------------
+@node_action
+def passThrough(state):
+    return state
+
+# ----------------------------------------------------------------------
+# Node Classes
 # ----------------------------------------------------------------------
 class Node(ABC):
     def __init__(self, node_id: str) -> None:
@@ -108,14 +139,13 @@ class Node(ABC):
         """Executes the node's function with the provided state."""
         pass
 
-# ----------------------------------------------------------------------
-# Processing Node
-# ----------------------------------------------------------------------
 class ProcessingNode(Node):
     def __init__(self, node_id: str, func: Callable[[State], State]) -> None:
         super().__init__(node_id)
         self.func: Callable[[State], State] = func
         func_name = getattr(func, '__name__', func.__class__.__name__)
+        if not getattr(func, "_is_node_action", False):
+            raise NodeActionNotDecoratedError(func)
         logging.info(f"ProcessingNode '{self.node_id}' created with processing function '{func.__name__}'.")
 
     def execute(self, state: State) -> State:
@@ -124,9 +154,6 @@ class ProcessingNode(Node):
         logging.info(f"ProcessingNode '{self.node_id}' finished execution with output: {result}")
         return result
 
-# ----------------------------------------------------------------------
-# Aggregator Node
-# ----------------------------------------------------------------------
 class AggregatorNode(Node):
     def __init__(self, node_id: str) -> None:
         super().__init__(node_id)
@@ -162,6 +189,8 @@ class ConditionalEdge(Edge):
     def __init__(self, source: Node, sinks: List[Node], router: Callable[[State], str]) -> None:
         self.source: Node = source
         self.sinks: List[Node] = sinks
+        if not getattr(router, "_is_routing_function", False):
+            raise RoutingFunctionNotDecoratedError(router)
         self.routing_function: Callable[[State], str] = router
         logging.info(f"ConditionalEdge created from '{source.node_id}' to {[sink.node_id for sink in sinks]} using router '{router.__name__}'.")
 
@@ -183,8 +212,8 @@ class Graph:
 class GraphBuilder:
     def __init__(self) -> None:
         logging.info("Initializing GraphBuilder...")
-        start_node = ProcessingNode("start", lambda state: state)
-        end_node = ProcessingNode("end", lambda state: state)
+        start_node = ProcessingNode("start", passThrough)
+        end_node = ProcessingNode("end", passThrough)
         self.graph: Graph = Graph(start_node, end_node)
         # Add predefined start and end nodes
         self.add_node(start_node)
@@ -212,9 +241,15 @@ class GraphBuilder:
         if source_id not in self.graph.nodes:
             logging.error(f"Source node '{source_id}' not found.")
             raise NodeNotFoundError(source_id)
+        if source_id == "end":
+            logging.error("End cannot be the source of a concrete edge")
+            raise GraphConfigurationError("End cannot be the source of a concrete edge")
         if sink_id not in self.graph.nodes:
             logging.error(f"Sink node '{sink_id}' not found.")
             raise NodeNotFoundError(sink_id)
+        if sink_id == "start":
+            logging.error("Start node cannot be a sink of concrete edge.")
+            raise GraphConfigurationError("Start node cannot be a sink of concrete edge.")
         source = self.graph.nodes[source_id]
         sink = self.graph.nodes[sink_id]
         # Check for existing concrete edge.
@@ -238,12 +273,18 @@ class GraphBuilder:
         if source_id not in self.graph.nodes:
             logging.error(f"Source node '{source_id}' not found for conditional edge.")
             raise NodeNotFoundError(source_id)
+        if source_id == "end":
+            logging.error("End cannot be the source of a conditional edge")
+            raise GraphConfigurationError("End cannot be the source of a conditional edge")
         source = self.graph.nodes[source_id]
         sinks: List[Node] = []
         for sink_id in sink_ids:
             if sink_id not in self.graph.nodes:
                 logging.error(f"Sink node '{sink_id}' not found for conditional edge.")
                 raise NodeNotFoundError(sink_id)
+            if sink_id == "start":
+                logging.error("Start node cannot be a sink of conditional edge.")
+                raise GraphConfigurationError("Start node cannot be a sink of conditional edge.")
             sinks.append(self.graph.nodes[sink_id])
         # Check for duplicate edges in concrete edges.
         for edge in self.graph.concrete_edges:
