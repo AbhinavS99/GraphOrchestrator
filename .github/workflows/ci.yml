@@ -27,5 +27,5 @@ jobs:
         run: |
           # Run all tests and measure coverage on all source files.
           coverage run -m unittest discover -s tests
-          # Print coverage report and fail if coverage is below 90%
-          coverage report --fail-under=50
+          # Print coverage report and fail if coverage is below 80%
+          coverage report --fail-under=80

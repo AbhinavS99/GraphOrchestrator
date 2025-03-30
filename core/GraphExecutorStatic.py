@@ -24,28 +24,39 @@ logging.basicConfig(
 # Custom Exceptions
 # ----------------------------------------------------------------------
 class GraphOrchestratorException(Exception):
-    """Base exception for graph orchestration errors."""
+    """Base class for graph orchestration exceptions."""
     pass
 
 class DuplicateNodeError(GraphOrchestratorException):
-    def __init__(self, node_id: str) -> None:
-        super().__init__(f"Node with id '{node_id}' already exists in the graph.")
+    def __init__(self, node_id: str):
+        super().__init__(f"Node with id '{node_id}' already exists.")
+        self.node_id = node_id
 
 class EdgeExistsError(GraphOrchestratorException):
-    def __init__(self, source_id: str, sink_id: str) -> None:
-        super().__init__(f"An edge from '{source_id}' to '{sink_id}' already exists.")
+    def __init__(self, source_id: str, sink_id: str):
+        super().__init__(f"Edge from '{source_id}' to '{sink_id}' already exists.")
+        self.source_id = source_id
+        self.sink_id = sink_id
 
 class NodeNotFoundError(GraphOrchestratorException):
-    def __init__(self, node_id: str) -> None:
-        super().__init__(f"Node with id '{node_id}' was not found in the graph.")
+    def __init__(self, node_id: str):
+        super().__init__(f"Node '{node_id}' not found in the graph.")
+        self.node_id = node_id
 
 class GraphConfigurationError(GraphOrchestratorException):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, message: str):
+        super().__init__(f"Graph configuration error: {message}")
 
-class GraphExecutionError(Exception):
-    def __init__(self, node_id: str, message: str) -> None:
-        super().__init__(f"Error executing node '{node_id}': {message}")
+class GraphExecutionError(GraphOrchestratorException):
+    def __init__(self, node_id: str, message: str):
+        super().__init__(f"Execution failed at node '{node_id}': {message}")
+        self.node_id = node_id
+        self.message = message
+
+class InvalidRoutingFunctionOutput(GraphOrchestratorException):
+    def __init__(self, returned_value: Any):
+        super().__init__(f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}")
+        self.returned_value = returned_value
 
 # ----------------------------------------------------------------------
 # Retry Policy Class
@@ -77,7 +88,7 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
         result = func(state)
         if not isinstance(result, str):
             logging.error(f"Routing function '{func.__name__}' returned a non-string value: {result}")
-            raise ValueError("Routing function must return a single string representing the node id.")
+            raise InvalidRoutingFunctionOutput(result)
         logging.info(f"Routing function '{func.__name__}' returned '{result}' for state: {state}")
         return result
     return wrapper

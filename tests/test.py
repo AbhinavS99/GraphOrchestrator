@@ -1,4 +1,3 @@
-import sys
 import time
 import unittest
 from core.GraphExecutorStatic import (
@@ -9,6 +8,12 @@ from core.GraphExecutorStatic import (
     GraphExecutionError,
     RetryPolicy,
     AggregatorNode,
+    DuplicateNodeError,
+    EdgeExistsError,
+    NodeNotFoundError,
+    GraphConfigurationError,
+    InvalidRoutingFunctionOutput,
+    routing_function,
 )
 
 def sample_node_func(state):
@@ -17,6 +22,55 @@ def sample_node_func(state):
     """
     state.data["sample"] = "passed"
     return state
+
+class TestCustomExceptions(unittest.TestCase):
+
+    def test_duplicate_node_error(self):
+        builder = GraphBuilder()
+        node = ProcessingNode("dup", lambda s: s)
+        builder.add_node(node)
+        with self.assertRaises(DuplicateNodeError):
+            builder.add_node(ProcessingNode("dup", lambda s: s))
+
+    def test_edge_exists_error(self):
+        builder = GraphBuilder()
+        n1 = ProcessingNode("A", lambda s: s)
+        n2 = ProcessingNode("B", lambda s: s)
+        builder.add_node(n1)
+        builder.add_node(n2)
+        builder.add_concrete_edge("A", "B")
+        with self.assertRaises(EdgeExistsError):
+            builder.add_concrete_edge("A", "B")
+
+    def test_node_not_found_error(self):
+        builder = GraphBuilder()
+        node = ProcessingNode("exist", lambda s: s)
+        builder.add_node(node)
+        with self.assertRaises(NodeNotFoundError):
+            builder.add_concrete_edge("exist", "missing")
+
+    def test_graph_configuration_error_start_node_validation(self):
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("custom", lambda s: s))
+        builder.add_conditional_edge("start", ["custom"], lambda s: "custom")
+        with self.assertRaises(GraphConfigurationError):
+            builder.build_graph()
+
+    def test_graph_configuration_error_end_node_validation(self):
+        builder = GraphBuilder()
+        # Don't connect anything to end
+        builder.add_node(ProcessingNode("solo", lambda s: s))
+        builder.add_concrete_edge("start", "solo")
+        with self.assertRaises(GraphConfigurationError):
+            builder.build_graph()
+
+    def test_invalid_routing_function_output(self):
+        @routing_function
+        def bad_router(state):
+            return 42  # Not a string
+
+        with self.assertRaises(InvalidRoutingFunctionOutput):
+            bad_router(State(data={}))
 
 class TestGraphExecutor(unittest.TestCase):
     """
