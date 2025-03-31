@@ -1,4 +1,5 @@
 import logging
+import random
 import copy
 import time
 from abc import ABC, abstractmethod
@@ -69,6 +70,16 @@ class RoutingFunctionNotDecoratedError(GraphOrchestratorException):
         func_name = getattr(func, '__name__', repr(func))
         super().__init__(f"The function '{func_name}' passed to ConditionalEdge must be decorated with @routing_function.")
 
+class InvalidAggregatorActionError(GraphOrchestratorException):
+    def __init__(self, returned_value: Any):
+        super().__init__(f"Aggregator action must return a state, but got {type(returned_value).__name__}")
+        self.returned_value = returned_value
+
+class AggregatorActionNotDecorated(GraphOrchestratorException):
+    def __init__(self, func: Callable):
+        func_name = getattr(func, '__name__', repr(func))
+        super().__init__(f"The function '{func_name}' passed to Aggregator must be decorated with @aggregator_action")
+
 # ----------------------------------------------------------------------
 # Retry Policy Class
 # ----------------------------------------------------------------------
@@ -117,12 +128,36 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
     setattr(func, "_is_node_action", True)
     return func
 
+def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[State]], State]:
+    """
+    Decorator to mark a function as a valid aggregator action
+    """
+    @wraps(func)
+    def wrapper(states: List[State]) -> State:
+        logging.info(f"Aggregator action '{func.__name__}' invoked with state: {states}")
+        result = func(states)
+        if not isinstance(result, State):
+            logging.error(f"Aggregator action '{func.__name__}' returned a non-state value: {result}")
+            raise InvalidAggregatorActionError(result)
+        logging.info(f"Routing function '{func.__name__}' returned '{result}'")
+        return result
+    wrapper.is_aggregator_action = True
+    return wrapper    
+
+
 # ----------------------------------------------------------------------
 # Pass Through - function decorated to pass the state unchanged
 # ----------------------------------------------------------------------
 @node_action
 def passThrough(state):
     return state
+
+# ----------------------------------------------------------------------
+# Select Random State - function decorated to select any random state 
+# ----------------------------------------------------------------------
+@aggregator_action
+def selectRandomState(states):
+    return random.choice(states)
 
 # ----------------------------------------------------------------------
 # Node Classes
@@ -155,22 +190,18 @@ class ProcessingNode(Node):
         return result
 
 class AggregatorNode(Node):
-    def __init__(self, node_id: str) -> None:
+    def __init__(self, node_id: str, aggregator_action: Callable[[List[State]], State]) -> None:
         super().__init__(node_id)
+        self.aggregator_action: Callable[[List[State]], State] = aggregator_action
+        if not getattr(aggregator_action, "is_aggregator_action", False):
+            raise AggregatorActionNotDecorated(aggregator_action)
         logging.info(f"AggregatorNode '{self.node_id}' created.")
 
     def execute(self, states: List[State]) -> State:
         logging.info(f"AggregatorNode '{self.node_id}' starting aggregation of {len(states)} states.")
-        result = self.llm_merge(states)
+        result = self.aggregator_action(states)
         logging.info(f"AggregatorNode '{self.node_id}' completed aggregation with result: {result}")
         return result
-
-    def llm_merge(self, states: List[State]) -> State:
-        # Placeholder for LLM merging: simply combines all state dictionaries.
-        merged_data: Dict[str, Any] = {}
-        for state in states:
-            merged_data.update(state.data)
-        return State(data=merged_data)
 
 # ----------------------------------------------------------------------
 # Edge Classes

@@ -4,6 +4,7 @@ import matplotlib
 # Use a non-interactive backend for testing so no window pops up.
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from typing import List
 from core.GraphExecutorStatic import (
     State,
     DuplicateNodeError,
@@ -20,7 +21,9 @@ from core.GraphExecutorStatic import (
     RepresentationalGraph,
     GraphVisualizer,
     passThrough,
+    selectRandomState,
     node_action,
+    aggregator_action,
     routing_function
 )
 
@@ -159,7 +162,7 @@ class GraphTests(unittest.TestCase):
         builder.add_node(ProcessingNode("node1", passThrough))
         builder.add_node(ProcessingNode("node2", passThrough))
         builder.add_node(ProcessingNode("node3", passThrough))
-        builder.add_aggregator(AggregatorNode("aggregator1"))
+        builder.add_aggregator(AggregatorNode("aggregator1", selectRandomState))
         builder.add_conditional_edge("start", ["node1", "node2"], router)
         builder.add_concrete_edge("node1", "aggregator1")
         builder.add_concrete_edge("node2", "aggregator1")
@@ -267,6 +270,108 @@ class GraphTests(unittest.TestCase):
         exeuctor = GraphExecutor(graph, initial_state)
         final_state = exeuctor.execute()
         self.assertEqual(final_state, State(messages=[11, 12, 0]))
+
+    def test_22_graph_with_aggregator(self):
+        @node_action
+        def node1_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 1
+            state.messages.append(latest_state)
+            return state
+        @node_action
+        def node2_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 2
+            state.messages.append(latest_state)
+            return state
+        @node_action
+        def node3_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 3
+            state.messages.append(latest_state)
+            return state
+        @aggregator_action
+        def agg_action(states: List[State]):
+            state1 = states[0]
+            state2 = states[1]
+            latest_state = state1.messages[-1] + state2.messages[-1]
+            state1.messages.append(latest_state)
+            return state1
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("node1", node1_action))
+        builder.add_node(ProcessingNode("node2", node2_action))
+        builder.add_node(ProcessingNode("node3", node3_action))
+        builder.add_node(AggregatorNode("agg", agg_action))
+        builder.add_concrete_edge("start", "node1")
+        builder.add_concrete_edge("node1", "node2")
+        builder.add_concrete_edge("node1", "node3")
+        builder.add_concrete_edge("node2", "agg")
+        builder.add_concrete_edge("node3", "agg")
+        builder.add_concrete_edge("agg", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[1])
+        executor = GraphExecutor(graph, initial_state)
+        final_state = executor.execute()
+        self.assertEqual(final_state, State(messages=[1, 2, 4, 9]))
+
+    def test_23_aggregator_with_conditional(self):
+        @node_action
+        def node1_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 1
+            state.messages.append(latest_state)
+            return state
+        @node_action
+        def node2_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 2
+            state.messages.append(latest_state)
+            return state
+        @node_action
+        def node3_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 3
+            state.messages.append(latest_state)
+            return state
+        @node_action
+        def node4_action(state: State):
+            latest_state = state.messages[-1]
+            latest_state += 1
+            state.messages.append(latest_state)
+            return state
+        @routing_function
+        def router(state: State):
+            latest_state = state.messages[-1]
+            if latest_state%3 == 0:
+                return "end"
+            else:
+                return "node1"
+        @aggregator_action
+        def agg_action(states: List[State]):
+            state1 = states[0]
+            state2 = states[1]
+            latest_state = state1.messages[-1] + state2.messages[-1]
+            state1.messages.append(state2.messages[-1])
+            state1.messages.append(latest_state)
+            return state1
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("node1", node1_action))
+        builder.add_node(ProcessingNode("node2", node2_action))
+        builder.add_node(ProcessingNode("node3", node3_action))
+        builder.add_node(ProcessingNode("node4", node4_action))
+        builder.add_aggregator(AggregatorNode("agg", agg_action))
+        builder.add_concrete_edge("start", "node1")
+        builder.add_concrete_edge("node1", "node2")
+        builder.add_concrete_edge("node1", "node3")
+        builder.add_concrete_edge("node2", "agg")
+        builder.add_concrete_edge("node3", "agg")
+        builder.add_concrete_edge("agg", "node4")
+        builder.add_conditional_edge("node4", ["node1", "end"], router)
+        graph = builder.build_graph()
+        initial_state = State(messages=[0])
+        executor = GraphExecutor(graph, initial_state)
+        final_state = executor.execute()
+        self.assertEqual(final_state, State(messages=[0, 1, 3, 4, 7, 8, 9, 11, 12, 23, 24]))
         
     def testv_01_conversion_test(self):
         @routing_function
@@ -274,7 +379,7 @@ class GraphTests(unittest.TestCase):
             return "agg"
         builder = GraphBuilder()
         proc_node = ProcessingNode("proc", passThrough)
-        agg_node = AggregatorNode("agg")
+        agg_node = AggregatorNode("agg", selectRandomState)
         builder.add_node(proc_node)
         builder.add_aggregator(agg_node)
         builder.add_concrete_edge("start", "proc")
