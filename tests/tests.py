@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from typing import List
-from core.GraphExecutorStatic import (
+from graphorchestrator.GraphExecutorStatic import (
     State,
     DuplicateNodeError,
     NodeNotFoundError,
