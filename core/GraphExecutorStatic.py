@@ -60,6 +60,11 @@ class InvalidRoutingFunctionOutput(GraphOrchestratorException):
         super().__init__(f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
 
+class InvalideNodeActionOutput(GraphOrchestratorException):
+    def __init__(self, returned_value: Any):
+        super().__init__(f"Node action must return a state, but got {type(returned_value).__name__}: {returned_value}")
+        self.returned_value = returned_value
+
 class NodeActionNotDecoratedError(GraphOrchestratorException):
     def __init__(self, func: Callable):
         func_name = getattr(func, '__name__', repr(func))
@@ -79,6 +84,16 @@ class AggregatorActionNotDecorated(GraphOrchestratorException):
     def __init__(self, func: Callable):
         func_name = getattr(func, '__name__', repr(func))
         super().__init__(f"The function '{func_name}' passed to Aggregator must be decorated with @aggregator_action")
+
+class EmptyToolNodeDescriptionError(GraphOrchestratorException):
+    def __init__(self, func: Callable):
+        func_name = getattr(func, '__name__', repr(func))
+        super().__init__(f"The tool function '{func_name}' has no description or docstring provided")
+
+class ToolMethodNotDecorated(GraphOrchestratorException):
+    def __init__(self, func: Callable):
+        func_name = getattr(func, '__name__', repr(func))
+        super().__init__(f"The function '{func_name}' passed to ToolNode has to be decorted with @tool_method")
 
 # ----------------------------------------------------------------------
 # Retry Policy Class
@@ -125,8 +140,16 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
     """
     Decorator to mark a function as a valid node action.
     """
-    setattr(func, "_is_node_action", True)
-    return func
+    @wraps(func)
+    def wrapper(state: State) -> State:
+        logging.info(f"Node action '{func.__name__}' invoked with state: {state}")
+        result = func(state)
+        if not isinstance(result, State):
+            logging.error(f"Node action '{func.__name__}' returned a non-state value: {result}")
+            raise InvalideNodeActionOutput(result)
+        return state
+    wrapper._is_node_action = True
+    return wrapper
 
 def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[State]], State]:
     """
@@ -201,6 +224,22 @@ class AggregatorNode(Node):
         logging.info(f"AggregatorNode '{self.node_id}' starting aggregation of {len(states)} states.")
         result = self.aggregator_action(states)
         logging.info(f"AggregatorNode '{self.node_id}' completed aggregation with result: {result}")
+        return result
+
+class ToolNode(ProcessingNode):
+    def __init__(self, node_id: str, tool_method: Callable[[State], State], description: Optional[str]) -> None:
+        super().__init__(node_id, tool_method)
+        method_docstring = tool_method.__doc__
+        if (method_docstring == None or method_docstring.strip() == "") and (description == None or description.strip() == ""):
+            raise EmptyToolNodeDescriptionError(tool_method)
+        if not getattr(tool_method, "is_tool_method", False):
+            raise ToolMethodNotDecorated(tool_method)
+        logging.info(f"ToolNode '{self.node_id}' created with tool method '{tool_method.__name__}.'")
+    
+    def execute(self, state: State) -> State:
+        logging.info(f"ToolNode '{self.node_id}' starting execution with input: {state}")
+        result = self.func(state)
+        logging.info(f"ToolNode '{self.node_id}' finished execution with output: {result}")
         return result
 
 # ----------------------------------------------------------------------
