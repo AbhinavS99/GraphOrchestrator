@@ -26,6 +26,6 @@ jobs:
       - name: Run tests with coverage
         run: |
           # Run all tests and measure coverage on all source files.
-          coverage run -m unittest discover -s tests
+          coverage run -m unittest discover -s graphorchestrator.tests
           # Print coverage report and fail if coverage is below 85%
           coverage report --fail-under=85
