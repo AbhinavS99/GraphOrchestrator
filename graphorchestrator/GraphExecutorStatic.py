@@ -65,6 +65,11 @@ class InvalideNodeActionOutput(GraphOrchestratorException):
         super().__init__(f"Node action must return a state, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
 
+class InvalidToolMehtodOutput(GraphOrchestratorException):
+    def __init__(self, returned_value: Any):
+        super().__init__(f"Tool method must return a state, but got {type(returned_value).__name__}: {returned_value}")
+        self.returned_value = returned_value
+
 class NodeActionNotDecoratedError(GraphOrchestratorException):
     def __init__(self, func: Callable):
         func_name = getattr(func, '__name__', repr(func))
@@ -133,7 +138,7 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
             raise InvalidRoutingFunctionOutput(result)
         logging.info(f"Routing function '{func.__name__}' returned '{result}' for state: {state}")
         return result
-    wrapper._is_routing_function = True
+    wrapper.is_routing_function = True
     return wrapper
 
 def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
@@ -148,7 +153,23 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
             logging.error(f"Node action '{func.__name__}' returned a non-state value: {result}")
             raise InvalideNodeActionOutput(result)
         return state
-    wrapper._is_node_action = True
+    wrapper.is_node_action = True
+    return wrapper
+
+def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
+    """
+    Decorator to mark a function as valid tool method.
+    """
+    @wraps(func)
+    def wrapper(state: State) -> State:
+        logging.info(f"Tool method '{func.__name__}' invoked with state: {state}")
+        result = func(state)
+        if not isinstance(result, State):
+            logging.error(f"Tool method '{func.__name__}' returned a non-state value: {result}")
+            raise InvalidToolMehtodOutput(result)
+        return state
+    wrapper.is_node_action = True
+    wrapper.is_tool_method = True
     return wrapper
 
 def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[State]], State]:
@@ -202,7 +223,7 @@ class ProcessingNode(Node):
         super().__init__(node_id)
         self.func: Callable[[State], State] = func
         func_name = getattr(func, '__name__', func.__class__.__name__)
-        if not getattr(func, "_is_node_action", False):
+        if not getattr(func, "is_node_action", False):
             raise NodeActionNotDecoratedError(func)
         logging.info(f"ProcessingNode '{self.node_id}' created with processing function '{func.__name__}'.")
 
@@ -228,12 +249,12 @@ class AggregatorNode(Node):
 
 class ToolNode(ProcessingNode):
     def __init__(self, node_id: str, tool_method: Callable[[State], State], description: Optional[str]) -> None:
-        super().__init__(node_id, tool_method)
         method_docstring = tool_method.__doc__
         if (method_docstring == None or method_docstring.strip() == "") and (description == None or description.strip() == ""):
             raise EmptyToolNodeDescriptionError(tool_method)
         if not getattr(tool_method, "is_tool_method", False):
             raise ToolMethodNotDecorated(tool_method)
+        super().__init__(node_id, tool_method)
         logging.info(f"ToolNode '{self.node_id}' created with tool method '{tool_method.__name__}.'")
     
     def execute(self, state: State) -> State:
@@ -259,7 +280,7 @@ class ConditionalEdge(Edge):
     def __init__(self, source: Node, sinks: List[Node], router: Callable[[State], str]) -> None:
         self.source: Node = source
         self.sinks: List[Node] = sinks
-        if not getattr(router, "_is_routing_function", False):
+        if not getattr(router, "is_routing_function", False):
             raise RoutingFunctionNotDecoratedError(router)
         self.routing_function: Callable[[State], str] = router
         logging.info(f"ConditionalEdge created from '{source.node_id}' to {[sink.node_id for sink in sinks]} using router '{router.__name__}'.")

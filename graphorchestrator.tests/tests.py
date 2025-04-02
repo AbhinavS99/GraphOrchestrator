@@ -12,10 +12,18 @@ from graphorchestrator.GraphExecutorStatic import (
     EdgeExistsError,
     NodeActionNotDecoratedError,
     RoutingFunctionNotDecoratedError,
+    ToolMethodNotDecorated,
+    InvalideNodeActionOutput,
+    InvalidAggregatorActionError,
+    InvalidRoutingFunctionOutput,
     GraphConfigurationError,
+    EmptyToolNodeDescriptionError,
+    GraphExecutionError,
     ProcessingNode,
     AggregatorNode,
+    ToolNode,
     ConditionalEdge,
+    RetryPolicy,
     GraphBuilder,
     GraphExecutor,
     RepresentationalGraph,
@@ -24,7 +32,8 @@ from graphorchestrator.GraphExecutorStatic import (
     selectRandomState,
     node_action,
     aggregator_action,
-    routing_function
+    routing_function,
+    tool_method
 )
 
 class GraphTests(unittest.TestCase):
@@ -372,6 +381,171 @@ class GraphTests(unittest.TestCase):
         executor = GraphExecutor(graph, initial_state)
         final_state = executor.execute()
         self.assertEqual(final_state, State(messages=[0, 1, 3, 4, 7, 8, 9, 11, 12, 23, 24]))
+    
+    def test_24_retry_policy_behavior(self):
+        # Test that a node failing a few times is retried according to the retry policy.
+        call_count = [0]
+
+        @node_action
+        def flaky_node(state: State):
+            call_count[0] += 1
+            if call_count[0] < 3:
+                raise Exception("Intentional failure")
+            state.messages.append(call_count[0])
+            return state
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("flaky", flaky_node))
+        builder.add_concrete_edge("start", "flaky")
+        builder.add_concrete_edge("flaky", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[0])
+        executor = GraphExecutor(graph, initial_state, retry_policy=RetryPolicy(max_retries=5, delay=0.1, backoff=1))
+        final_state = executor.execute()
+        # Expect that after a few failures, the node eventually appends the call count (which should be 3)
+        self.assertIn(3, final_state.messages)
+
+    def test_25_max_supersteps_exceeded(self):
+        # Create a graph that cycles indefinitely (without reaching "end") and verify that execution stops.
+        @routing_function
+        def loop_router(state: State):
+            return "loop"
+
+        @node_action
+        def loop_node(state: State):
+            state.messages.append(1)
+            return state
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("loop", loop_node))
+        # Create a cycle: start -> loop and loop -> loop via conditional edge.
+        builder.add_concrete_edge("start", "loop")
+        builder.add_node(ProcessingNode("node2", passThrough))
+        builder.add_conditional_edge("loop", ["loop"], loop_router)
+        builder.add_concrete_edge("node2", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[])
+        executor = GraphExecutor(graph, initial_state)
+        with self.assertRaises(GraphExecutionError):
+            executor.execute(max_supersteps=3)
+
+    def test_26_toolnode_missing_description(self):
+        # Define a tool method with no docstring and an empty description.
+        def tool_method(state: State) -> State:
+            state.messages.append(42)
+            return state
+        # Ensure no docstring and no description provided.
+        tool_method.__doc__ = None
+        tool_method.is_tool_method = True
+        with self.assertRaises(EmptyToolNodeDescriptionError):
+            # Attempt to create a ToolNode without a description.
+            _ = ToolNode("tool", tool_method, description="")
+
+    def test_27_successful_toolnode_execution(self):
+        # Define a properly decorated tool method with a valid description.
+        @tool_method
+        def valid_tool(state: State) -> State:
+            """A valid tool method that appends 999."""
+            state.messages.append(999)
+            return state
+        builder = GraphBuilder()
+        tool_node = ToolNode("tool", valid_tool, description="Appends 999 to state")
+        builder.add_node(tool_node)
+        builder.add_concrete_edge("start", "tool")
+        builder.add_concrete_edge("tool", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[])
+        executor = GraphExecutor(graph, initial_state)
+        final_state = executor.execute()
+        self.assertIn(999, final_state.messages)
+
+    def test_28_aggregator_invalid_output(self):
+        # Aggregator action that returns a non-State value.
+        @aggregator_action
+        def bad_agg(states: List[State]):
+            return 123  # Invalid output
+
+        builder = GraphBuilder()
+        # Add two simple processing nodes.
+        builder.add_node(ProcessingNode("node1", passThrough))
+        builder.add_node(ProcessingNode("node2", passThrough))
+        # Add an aggregator node with the bad aggregator action.
+        builder.add_aggregator(AggregatorNode("agg", bad_agg))
+        # Build a graph that sends states from node1 and node2 into the aggregator.
+        builder.add_concrete_edge("start", "node1")
+        builder.add_concrete_edge("start", "node2")
+        builder.add_concrete_edge("node1", "agg")
+        builder.add_concrete_edge("node2", "agg")
+        builder.add_concrete_edge("agg", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[10])
+        executor = GraphExecutor(graph, initial_state)
+        with self.assertRaises((InvalidAggregatorActionError, GraphExecutionError)):
+            executor.execute()
+
+    def test_29_routing_function_invalid_output(self):
+        @routing_function
+        def bad_router(state: State):
+            return 123  # Should be a string
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("node1", passThrough))
+        builder.add_concrete_edge("start", "node1")
+        builder.add_conditional_edge("node1", ["end"], bad_router)
+        graph = builder.build_graph()
+        initial_state = State(messages=[])
+        executor = GraphExecutor(graph, initial_state)
+        # During execution, when node1 is processed, the bad_router will be invoked.
+        with self.assertRaises((InvalidRoutingFunctionOutput, GraphExecutionError)):
+            executor.execute()
+
+    def test_30_node_action_invalid_output(self):
+        # Node action that returns a non-State value.
+        @node_action
+        def bad_node_action(state: State):
+            return 123  # Invalid output
+
+        builder = GraphBuilder()
+        # This should raise an error upon execution because the node action returns non-State.
+        builder.add_node(ProcessingNode("badnode", bad_node_action))
+        builder.add_concrete_edge("start", "badnode")
+        builder.add_concrete_edge("badnode", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[5])
+        executor = GraphExecutor(graph, initial_state)
+        with self.assertRaises((InvalideNodeActionOutput, GraphExecutionError)):
+            executor.execute()
+
+    def test_31_tool_method_not_decorated(self):
+        # Define a tool method that is not decorated with the tool method marker.
+        def not_decorated_tool(state: State) -> State:
+            return state
+        # Do not set the is_tool_method flag.
+        with self.assertRaises(ToolMethodNotDecorated):
+            _ = ToolNode("tool", not_decorated_tool, description="Has no proper decoration")
+
+    def test_32_node_execution_timeout(self):
+        # Define a node that sleeps longer than the allowed superstep timeout.
+        @node_action
+        def slow_node(state: State):
+            time.sleep(2)  # Sleep 2 seconds, which is longer than the timeout we will set.
+            state.messages.append(999)
+            return state
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("slow", slow_node))
+        builder.add_concrete_edge("start", "slow")
+        builder.add_concrete_edge("slow", "end")
+        graph = builder.build_graph()
+        initial_state = State(messages=[])
+        # Set a very short timeout.
+        executor = GraphExecutor(graph, initial_state)
+        with self.assertRaises(GraphExecutionError) as cm:
+            executor.execute(superstep_timeout=1)
+        # Shutdown the executor to prevent pending tasks from logging after the test.
+        executor.executor.shutdown(wait=False)
+        self.assertIn("timed out", str(cm.exception))
+
         
     def testv_01_conversion_test(self):
         @routing_function
