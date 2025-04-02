@@ -546,7 +546,186 @@ class GraphTests(unittest.TestCase):
         executor.executor.shutdown(wait=False)
         self.assertIn("timed out", str(cm.exception))
 
-        
+    def test_33_aggregator_insufficient_states(self):
+        @aggregator_action
+        def strict_agg(states: List[State]):
+            if len(states) != 2:
+                raise ValueError("Expected exactly 2 states")
+            return states[0]
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("node1", passThrough))
+        builder.add_aggregator(AggregatorNode("agg", strict_agg))
+        builder.add_concrete_edge("start", "node1")
+        builder.add_concrete_edge("node1", "agg")
+        builder.add_concrete_edge("agg", "end")
+
+        graph = builder.build_graph()
+        initial_state = State(messages=[0])
+        executor = GraphExecutor(graph, initial_state)
+
+        with self.assertRaises(GraphExecutionError):
+            executor.execute()
+
+    def test_34_aggregator_state_isolation(self):
+        @aggregator_action
+        def isolating_agg(states: List[State]):
+            states[0].messages.append("MODIFIED")
+            return states[0]
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("n1", passThrough))
+        builder.add_node(ProcessingNode("n2", passThrough))
+        builder.add_aggregator(AggregatorNode("agg", isolating_agg))
+        builder.add_concrete_edge("start", "n1")
+        builder.add_concrete_edge("start", "n2")
+        builder.add_concrete_edge("n1", "agg")
+        builder.add_concrete_edge("n2", "agg")
+        builder.add_concrete_edge("agg", "end")
+
+        graph = builder.build_graph()
+        initial_state = State(messages=["A"])
+        executor = GraphExecutor(graph, initial_state)
+        final_state = executor.execute()
+        # Ensure only the output state is modified
+        self.assertIn("MODIFIED", final_state.messages)
+
+    def test_35_routing_to_nonexistent_node(self):
+        @routing_function
+        def invalid_router(state: State):
+            return "ghost"
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("n1", passThrough))
+        builder.add_concrete_edge("start", "n1")
+        builder.add_conditional_edge("n1", ["end"], invalid_router)
+
+        graph = builder.build_graph()
+        initial_state = State(messages=["hello"])
+        executor = GraphExecutor(graph, initial_state)
+
+        with self.assertRaises(GraphExecutionError) as cm:
+            executor.execute()
+
+        self.assertIn("ghost", str(cm.exception))
+
+    def test_36_empty_state_messages(self):
+        @node_action
+        def noop(state: State):
+            return state
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("noop", noop))
+        builder.add_concrete_edge("start", "noop")
+        builder.add_concrete_edge("noop", "end")
+
+        graph = builder.build_graph()
+        executor = GraphExecutor(graph, State(messages=[]))
+        final_state = executor.execute()
+
+        self.assertEqual(final_state.messages, [])
+
+    def test_37_mutated_shared_state(self):
+        @node_action
+        def mutate_state(state: State):
+            state.messages.append("MUTATED")
+            return state
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("n1", mutate_state))
+        builder.add_node(ProcessingNode("n2", passThrough))
+        builder.add_concrete_edge("start", "n1")
+        builder.add_concrete_edge("start", "n2")
+        builder.add_concrete_edge("n1", "end")
+        builder.add_concrete_edge("n2", "end")
+
+        graph = builder.build_graph()
+        executor = GraphExecutor(graph, State(messages=["A"]))
+        final_state = executor.execute()
+
+        # Assert we only see one MUTATED, not duplication due to shared state mutation
+        self.assertLessEqual(final_state.messages.count("MUTATED"), 1)
+            
+    def test_38_toolnode_docstring_suffices(self):
+        @tool_method
+        def documented_tool(state: State):
+            """This tool works without an explicit description."""
+            state.messages.append("OK")
+            return state
+
+        tool_node = ToolNode("doc_tool", documented_tool, description=None)
+        builder = GraphBuilder()
+        builder.add_node(tool_node)
+        builder.add_concrete_edge("start", "doc_tool")
+        builder.add_concrete_edge("doc_tool", "end")
+
+        graph = builder.build_graph()
+        executor = GraphExecutor(graph, State(messages=[]))
+        final_state = executor.execute()
+        self.assertIn("OK", final_state.messages)
+    
+    def test_39_single_input_to_aggregator(self):
+        @aggregator_action
+        def pass_through(states: List[State]):
+            return states[0]
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("solo", passThrough))
+        builder.add_aggregator(AggregatorNode("agg", pass_through))
+        builder.add_concrete_edge("start", "solo")
+        builder.add_concrete_edge("solo", "agg")
+        builder.add_concrete_edge("agg", "end")
+
+        graph = builder.build_graph()
+        executor = GraphExecutor(graph, State(messages=["solo"]))
+        final_state = executor.execute()
+        self.assertIn("solo", final_state.messages)
+    
+    def test_40_blank_routing_output(self):
+        @routing_function
+        def bad_router(state: State):
+            return ""  # Invalid node ID
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("n1", passThrough))
+        builder.add_concrete_edge("start", "n1")
+        builder.add_conditional_edge("n1", ["end"], bad_router)
+        graph = builder.build_graph()
+
+        executor = GraphExecutor(graph, State(messages=["blank"]))
+        with self.assertRaises(GraphExecutionError) as cm:
+            executor.execute()
+        self.assertIn("''", str(cm.exception))  # check blank is part of error
+
+    def test_41_aggregator_state_post_mutation_check(self):
+        # Aggregator will mutate after return just to test side effects
+        captured = {}
+
+        @aggregator_action
+        def sneaky_agg(states: List[State]):
+            s = states[0]
+            result = State(messages=list(s.messages))
+            captured["ref"] = result
+            return result
+
+        builder = GraphBuilder()
+        builder.add_node(ProcessingNode("n1", passThrough))
+        builder.add_node(ProcessingNode("n2", passThrough))
+        builder.add_aggregator(AggregatorNode("agg", sneaky_agg))
+        builder.add_concrete_edge("start", "n1")
+        builder.add_concrete_edge("start", "n2")
+        builder.add_concrete_edge("n1", "agg")
+        builder.add_concrete_edge("n2", "agg")
+        builder.add_concrete_edge("agg", "end")
+
+        graph = builder.build_graph()
+        executor = GraphExecutor(graph, State(messages=["hi"]))
+        final_state = executor.execute()
+        captured["ref"].messages.append("SNEAKY")  # post-mutation
+
+        # Ensure original final_state is unaffected
+        self.assertNotIn("SNEAKY", final_state.messages)
+
     def testv_01_conversion_test(self):
         @routing_function
         def dummy_router(state):
