@@ -481,6 +481,11 @@ class GraphExecutor:
                             logging.info(f"State routed from '{node_id}' to '{sink_id}' via concrete edge.")
                         elif isinstance(edge, ConditionalEdge):
                             chosen_node_id = edge.routing_function(result_state)
+                            if chosen_node_id not in [sink.node_id for sink in edge.sinks]:
+                                raise GraphExecutionError(
+                                    node.node_id,
+                                    f"Routing function returned unknown sink '{chosen_node_id}' not in declared sinks {[sink.node_id for sink in edge.sinks]}"
+                                )
                             next_active_states[chosen_node_id].append(copy.deepcopy(result_state))
                             logging.info(f"State routed from '{node_id}' to '{chosen_node_id}' via conditional edge.")
 
