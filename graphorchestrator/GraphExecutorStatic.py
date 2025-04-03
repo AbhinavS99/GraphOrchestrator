@@ -22,6 +22,37 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] [Thread: %(threadName)s] %(message)s"
 )
 
+def set_logging_options(logging_enabled: bool = True, log_filename: str = None) -> None:
+    """
+    Configures logging for the module.
+    
+    If logging_enabled is False, logging is completely disabled.
+    If logging_enabled is True and a log_filename is provided, logs will be redirected to that file.
+    Otherwise, logs are printed to the console.
+    """
+    # Remove any existing handlers
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    if not logging_enabled:
+        logging.disable(logging.CRITICAL)
+    else:
+        logging.disable(logging.NOTSET)
+        log_format = "%(asctime)s [%(levelname)s] [Thread: %(threadName)s] %(message)s"
+        if log_filename:
+            logging.basicConfig(
+                filename=log_filename,
+                level=logging.INFO,
+                format=log_format,
+                filemode='w'  # overwrite the log file each run; use 'a' to append
+            )
+        else:
+            logging.basicConfig(
+                level=logging.INFO,
+                format=log_format
+            )
+            
 # ----------------------------------------------------------------------
 # Custom Exceptions
 # ----------------------------------------------------------------------
@@ -99,6 +130,11 @@ class ToolMethodNotDecorated(GraphOrchestratorException):
     def __init__(self, func: Callable):
         func_name = getattr(func, '__name__', repr(func))
         super().__init__(f"The function '{func_name}' passed to ToolNode has to be decorted with @tool_method")
+
+class InvalidAIActionOutput(GraphOrchestratorException):
+    def __init__(self, returned_value: Any):
+        super().__init__(f"AI action must return a state, but got {type(returned_value).__name__}")
+        self.returned_value = returned_value
 
 # ----------------------------------------------------------------------
 # Retry Policy Class
@@ -204,6 +240,48 @@ def selectRandomState(states):
     return random.choice(states)
 
 # ----------------------------------------------------------------------
+# AI Action Class
+# ----------------------------------------------------------------------
+
+class AIActionBase(ABC):
+    def __init__(self, config: dict) -> None:
+        self.config: dict = config
+        self._model_built = False
+        self.is_node_action = True
+        self.model: Any = None  # This will hold the built model
+        self.__name__ = self.__class__.__name__  
+
+    @abstractmethod
+    def build_model(self):
+        """
+        Build and configure the generative model.
+        Concrete subclasses must implement this method and set:
+          self.model = <constructed model>
+          self._model_built = True
+        """
+        pass
+
+    @abstractmethod
+    def process_state(self, state: State) -> State:
+        """
+        Process the state using the generative model.
+        Subclasses implement this method to perform the actual state processing.
+        """
+        pass
+
+    def __call__(self, state: State) -> State:
+        """
+        Final __call__ implementation that ensures the model is built.
+        It then delegates to process_state.
+        """
+        if not self._model_built:
+            self.build_model()
+        result = self.process_state(state)
+        if not isinstance(result, State):
+            raise InvalidAIActionOutput(result)
+        return result
+
+# ----------------------------------------------------------------------
 # Node Classes
 # ----------------------------------------------------------------------
 class Node(ABC):
@@ -262,6 +340,15 @@ class ToolNode(ProcessingNode):
         result = self.func(state)
         logging.info(f"ToolNode '{self.node_id}' finished execution with output: {result}")
         return result
+    
+class AINode(ProcessingNode):
+    def __init__(self, node_id: str, description: str, model_action: Callable[[State], State]) -> None:
+        super().__init__(node_id, model_action)
+        self.description = description
+
+    def execute(self, state: State) -> State:
+        # Simply delegate to the model_action's __call__ method.
+        return self.func(state)
 
 # ----------------------------------------------------------------------
 # Edge Classes
@@ -446,7 +533,7 @@ class GraphExecutor:
                 current_delay *= retry_policy.backoff
                 attempt += 1
 
-    def execute(self, max_supersteps: int = 100, superstep_timeout: float = 300.0) -> Optional[State]:
+    def execute(self, max_supersteps: int = 100, superstep_timeout: float = 3000.0) -> Optional[State]:
         logging.info("Beginning graph execution...")
         superstep: int = 0
         final_state: Optional[State] = None
