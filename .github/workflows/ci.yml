@@ -21,11 +21,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage codecov
+          pip install coverage codecov pytest
 
       - name: Run tests with coverage
         run: |
-          coverage run -m unittest discover -s graphorchestrator.tests
+          coverage run -m pytest
           coverage report --fail-under=85
           coverage xml  # Generate XML for Codecov
 
@@ -34,6 +34,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
-          flags: unittests
+          flags: pytest
           name: python-coverage
           fail_ci_if_error: true
