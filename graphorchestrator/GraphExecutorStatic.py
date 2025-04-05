@@ -1,18 +1,17 @@
+import asyncio
+import copy
 import logging
 import random
-import copy
-import time
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
-import concurrent.futures
+from collections import defaultdict, deque, abc
 from dataclasses import dataclass, field
-from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
 from enum import Enum
-from collections import deque, defaultdict
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, Circle
+
 
 # ----------------------------------------------------------------------
 # Logging Configuration
@@ -91,12 +90,12 @@ class InvalidRoutingFunctionOutput(GraphOrchestratorException):
         super().__init__(f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
 
-class InvalideNodeActionOutput(GraphOrchestratorException):
+class InvalidNodeActionOutput(GraphOrchestratorException):
     def __init__(self, returned_value: Any):
         super().__init__(f"Node action must return a state, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
 
-class InvalidToolMehtodOutput(GraphOrchestratorException):
+class InvalidToolMethodOutput(GraphOrchestratorException):
     def __init__(self, returned_value: Any):
         super().__init__(f"Tool method must return a state, but got {type(returned_value).__name__}: {returned_value}")
         self.returned_value = returned_value
@@ -129,7 +128,7 @@ class EmptyToolNodeDescriptionError(GraphOrchestratorException):
 class ToolMethodNotDecorated(GraphOrchestratorException):
     def __init__(self, func: Callable):
         func_name = getattr(func, '__name__', repr(func))
-        super().__init__(f"The function '{func_name}' passed to ToolNode has to be decorted with @tool_method")
+        super().__init__(f"The function '{func_name}' passed to ToolNode has to be decorated with @tool_method")
 
 class InvalidAIActionOutput(GraphOrchestratorException):
     def __init__(self, returned_value: Any):
@@ -166,9 +165,9 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
     Decorator to ensure a routing function returns a single string.
     """
     @wraps(func)
-    def wrapper(state: State) -> str:
+    async def wrapper(state: State) -> str:
         logging.info(f"Routing function '{func.__name__}' invoked with state: {state}")
-        result = func(state)
+        result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, str):
             logging.error(f"Routing function '{func.__name__}' returned a non-string value: {result}")
             raise InvalidRoutingFunctionOutput(result)
@@ -177,33 +176,38 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
     wrapper.is_routing_function = True
     return wrapper
 
-def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
+def node_action(func: Callable[[State], Any]) -> Callable[[State], Any]:
     """
     Decorator to mark a function as a valid node action.
+    Supports both synchronous and asynchronous functions.
     """
     @wraps(func)
-    def wrapper(state: State) -> State:
+    async def wrapper(state: State) -> State:
         logging.info(f"Node action '{func.__name__}' invoked with state: {state}")
-        result = func(state)
+        result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, State):
             logging.error(f"Node action '{func.__name__}' returned a non-state value: {result}")
-            raise InvalideNodeActionOutput(result)
-        return state
+            raise InvalidNodeActionOutput(result)
+        return result
+
     wrapper.is_node_action = True
     return wrapper
 
-def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
+
+def tool_method(func: Callable[[State], Any]) -> Callable[[State], Any]:
     """
     Decorator to mark a function as valid tool method.
+    Supports both synchronous and asynchronous functions.
     """
     @wraps(func)
-    def wrapper(state: State) -> State:
+    async def wrapper(state: State) -> State:
         logging.info(f"Tool method '{func.__name__}' invoked with state: {state}")
-        result = func(state)
+        result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, State):
             logging.error(f"Tool method '{func.__name__}' returned a non-state value: {result}")
-            raise InvalidToolMehtodOutput(result)
-        return state
+            raise InvalidToolMethodOutput(result)
+        return result
+
     wrapper.is_node_action = True
     wrapper.is_tool_method = True
     return wrapper
@@ -213,13 +217,13 @@ def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[St
     Decorator to mark a function as a valid aggregator action
     """
     @wraps(func)
-    def wrapper(states: List[State]) -> State:
+    async def wrapper(states: List[State]) -> State:
         logging.info(f"Aggregator action '{func.__name__}' invoked with state: {states}")
-        result = func(states)
+        result = await func(states) if asyncio.iscoroutinefunction(func) else func(states)
         if not isinstance(result, State):
             logging.error(f"Aggregator action '{func.__name__}' returned a non-state value: {result}")
             raise InvalidAggregatorActionError(result)
-        logging.info(f"Routing function '{func.__name__}' returned '{result}'")
+        logging.info(f"Aggregator action '{func.__name__}' returned '{result}'")
         return result
     wrapper.is_aggregator_action = True
     return wrapper    
@@ -262,24 +266,25 @@ class AIActionBase(ABC):
         pass
 
     @abstractmethod
-    def process_state(self, state: State) -> State:
+    async def process_state(self, state: State) -> State:
         """
         Process the state using the generative model.
         Subclasses implement this method to perform the actual state processing.
         """
         pass
 
-    def __call__(self, state: State) -> State:
-        """
-        Final __call__ implementation that ensures the model is built.
-        It then delegates to process_state.
-        """
+    async def __call__(self, state: State) -> State:
         if not self._model_built:
             self.build_model()
-        result = self.process_state(state)
+        result_or_coro = self.process_state(state)
+        if isinstance(result_or_coro, abc.Awaitable):
+            result = await result_or_coro
+        else:
+            result = result_or_coro
         if not isinstance(result, State):
             raise InvalidAIActionOutput(result)
         return result
+
 
 # ----------------------------------------------------------------------
 # Node Classes
@@ -305,9 +310,9 @@ class ProcessingNode(Node):
             raise NodeActionNotDecoratedError(func)
         logging.info(f"ProcessingNode '{self.node_id}' created with processing function '{func.__name__}'.")
 
-    def execute(self, state: State) -> State:
+    async def execute(self, state: State) -> State:
         logging.info(f"ProcessingNode '{self.node_id}' starting execution with input: {state}")
-        result = self.func(state)
+        result = await self.func(state) if asyncio.iscoroutinefunction(self.func) else self.func(state)
         logging.info(f"ProcessingNode '{self.node_id}' finished execution with output: {result}")
         return result
 
@@ -319,9 +324,9 @@ class AggregatorNode(Node):
             raise AggregatorActionNotDecorated(aggregator_action)
         logging.info(f"AggregatorNode '{self.node_id}' created.")
 
-    def execute(self, states: List[State]) -> State:
+    async def execute(self, states: List[State]) -> State:
         logging.info(f"AggregatorNode '{self.node_id}' starting aggregation of {len(states)} states.")
-        result = self.aggregator_action(states)
+        result = await self.aggregator_action(states) if asyncio.iscoroutinefunction(self.aggregator_action) else self.aggregator_action(states)
         logging.info(f"AggregatorNode '{self.node_id}' completed aggregation with result: {result}")
         return result
 
@@ -335,9 +340,9 @@ class ToolNode(ProcessingNode):
         super().__init__(node_id, tool_method)
         logging.info(f"ToolNode '{self.node_id}' created with tool method '{tool_method.__name__}.'")
     
-    def execute(self, state: State) -> State:
+    async def execute(self, state: State) -> State:
         logging.info(f"ToolNode '{self.node_id}' starting execution with input: {state}")
-        result = self.func(state)
+        result = await self.func(state) if asyncio.iscoroutinefunction(self.func) else self.func(state)
         logging.info(f"ToolNode '{self.node_id}' finished execution with output: {result}")
         return result
     
@@ -346,9 +351,12 @@ class AINode(ProcessingNode):
         super().__init__(node_id, model_action)
         self.description = description
 
-    def execute(self, state: State) -> State:
-        # Simply delegate to the model_action's __call__ method.
-        return self.func(state)
+    async def execute(self, state: State) -> State:
+        logging.info(f"AINode '{self.node_id}' executing...")
+        result = await self.func(state)
+        logging.info(f"AINode '{self.node_id}' completed with result: {result}")
+        return result
+
 
 # ----------------------------------------------------------------------
 # Edge Classes
@@ -506,103 +514,92 @@ class GraphBuilder:
 # GraphExecutor Class
 # ----------------------------------------------------------------------
 class GraphExecutor:
-    def __init__(self, graph: Graph, initial_state: State, max_workers: int = 4, retry_policy: Optional[RetryPolicy] = None) -> None:
+    def __init__(self, graph, initial_state, max_workers: int = 4, retry_policy: Optional[RetryPolicy] = None):
         logging.info("Initializing GraphExecutor...")
-        self.graph: Graph = graph
-        self.initial_state: State = initial_state
-        self.max_workers: int = max_workers
-        self.executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=max_workers)
-        # Map node_id to list of states pending execution.
+        self.graph = graph
+        self.initial_state = initial_state
+        self.max_workers = max_workers
         self.active_states: Dict[str, List[State]] = defaultdict(list)
         self.active_states[graph.start_node.node_id].append(initial_state)
-        self.retry_policy: RetryPolicy = retry_policy if retry_policy is not None else RetryPolicy()
-        logging.info(f"GraphExecutor initialized. Starting at node '{graph.start_node.node_id}' with initial state: {initial_state}")
+        self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
 
-    def execute_node_with_retry(self, node: Node, input_data: Any, retry_policy: RetryPolicy) -> Any:
+    async def _execute_node_with_retry_async(self, node, input_data, retry_policy):
         attempt = 0
-        current_delay = retry_policy.delay
+        delay = retry_policy.delay
         while attempt <= retry_policy.max_retries:
             try:
+                if asyncio.iscoroutinefunction(node.execute):
+                    return await node.execute(input_data)
                 return node.execute(input_data)
             except Exception as e:
                 if attempt == retry_policy.max_retries:
-                    logging.error(f"Node '{node.node_id}' failed after {attempt + 1} attempts: {e}")
                     raise e
-                logging.warning(f"Node '{node.node_id}' execution failed on attempt {attempt + 1} with error: {e}. Retrying in {current_delay} seconds...")
-                time.sleep(current_delay)
-                current_delay *= retry_policy.backoff
+                logging.warning(f"[ASYNC] Node '{node.node_id}' failed (attempt {attempt + 1}): {e}. Retrying in {delay}s.")
+                await asyncio.sleep(delay)
+                delay *= retry_policy.backoff
                 attempt += 1
 
-    def execute(self, max_supersteps: int = 100, superstep_timeout: float = 3000.0) -> Optional[State]:
-        logging.info("Beginning graph execution...")
-        superstep: int = 0
-        final_state: Optional[State] = None
+    async def execute(self, max_supersteps: int = 100, superstep_timeout: float = 300.0) -> Optional[State]:
+        logging.info("🚀 Beginning graph execution...")
+        superstep = 0
+        final_state = None
 
         while self.active_states and superstep < max_supersteps:
-            logging.info(f"\n=== Superstep {superstep} ===")
-            logging.info(f"Active nodes for execution: {list(self.active_states.keys())}")
+            logging.info(f"=== Superstep {superstep} ===")
             next_active_states: Dict[str, List[State]] = defaultdict(list)
-            futures: List[tuple[str, Any]] = []
+            tasks = []
 
-            # Submit execution for each active node.
             for node_id, states in self.active_states.items():
                 node = self.graph.nodes[node_id]
-                logging.info(f"Dispatching node '{node_id}' with {len(states)} state(s).")
+                input_data = states if isinstance(node, AggregatorNode) else copy.deepcopy(states[0])
 
-                if isinstance(node, AggregatorNode):
-                    futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, states, self.retry_policy)))
-                else:
-                    state = states[0]
-                    futures.append((node_id, self.executor.submit(self.execute_node_with_retry, node, state, self.retry_policy)))
+                task = asyncio.create_task(
+                    asyncio.wait_for(
+                        self._execute_node_with_retry_async(node, input_data, self.retry_policy),
+                        timeout=superstep_timeout
+                    )
+                )
+                tasks.append((node_id, task))
 
-            # Process results with timeout
-            for node_id, future in futures:
+            for node_id, task in tasks:
                 try:
-                    result_state = future.result(timeout=superstep_timeout)
-                    logging.info(f"Node '{node_id}' completed execution with result: {result_state}")
+                    result_state = await task
                     node = self.graph.nodes[node_id]
+
                     for edge in node.outgoing_edges:
                         if isinstance(edge, ConcreteEdge):
-                            sink_id = edge.sink.node_id
-                            next_active_states[sink_id].append(copy.deepcopy(result_state))
-                            logging.info(f"State routed from '{node_id}' to '{sink_id}' via concrete edge.")
+                            next_active_states[edge.sink.node_id].append(copy.deepcopy(result_state))
                         elif isinstance(edge, ConditionalEdge):
-                            chosen_node_id = edge.routing_function(result_state)
-                            if chosen_node_id not in [sink.node_id for sink in edge.sinks]:
-                                raise GraphExecutionError(
-                                    node.node_id,
-                                    f"Routing function returned unknown sink '{chosen_node_id}' not in declared sinks {[sink.node_id for sink in edge.sinks]}"
-                                )
-                            next_active_states[chosen_node_id].append(copy.deepcopy(result_state))
-                            logging.info(f"State routed from '{node_id}' to '{chosen_node_id}' via conditional edge.")
+                            chosen_id = await edge.routing_function(result_state)
+                            valid_ids = [sink.node_id for sink in edge.sinks]
+                            if chosen_id not in valid_ids:
+                                raise GraphExecutionError(node_id, f"Invalid routing output: '{chosen_id}'")
+                            next_active_states[chosen_id].append(copy.deepcopy(result_state))
 
                     if node_id == self.graph.end_node.node_id:
                         final_state = result_state
 
-                except concurrent.futures.TimeoutError:
-                    logging.error(f"Execution of node '{node_id}' timed out after {superstep_timeout} seconds.")
-                    raise GraphExecutionError(node_id, f"Node execution timed out after {superstep_timeout} seconds.")
-
+                except asyncio.TimeoutError:
+                    raise GraphExecutionError(node_id, f"Execution timed out after {superstep_timeout}s.")
                 except Exception as e:
-                    logging.error(f"Exception during execution of node '{node_id}': {e}")
                     raise GraphExecutionError(node_id, str(e))
 
             self.active_states = next_active_states
             superstep += 1
 
         if superstep >= max_supersteps:
-            logging.error("Graph execution terminated: maximum supersteps reached without termination.")
-            raise GraphExecutionError("N/A", "Maximum supersteps reached without termination.")
+            raise GraphExecutionError("N/A", "Max supersteps reached")
 
-        logging.info("Graph execution completed successfully.")
+        logging.info("✅ Graph execution completed.")
         return final_state
+
 
 # ----------------------------------------------------------------------
 # Representational Graph Classes for Visualization
 # ----------------------------------------------------------------------
 class RepresentationalEdgeType(Enum):
-    ConcreteEdgeRepresentation = 1
-    ConditionalEdgeRepresentation = 2  # Note: using the provided spelling; adjust to "ConditionalEdgeRepresentation" if desired.
+    CONCRETE = 1
+    CONDITIONAL = 2
 
 class RepresentationalNode:
     """
@@ -661,7 +658,7 @@ class RepresentationalGraph:
         for edge in graph.concrete_edges:
             src = rep_graph.nodes[edge.source.node_id]
             sink = rep_graph.nodes[edge.sink.node_id]
-            rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.ConcreteEdgeRepresentation)
+            rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.CONCRETE)
             rep_graph.edges.append(rep_edge)
             src.outgoing_edges.append(rep_edge)
             sink.incoming_edges.append(rep_edge)
@@ -671,7 +668,7 @@ class RepresentationalGraph:
             src = rep_graph.nodes[cond_edge.source.node_id]
             for sink_node in cond_edge.sinks:
                 sink = rep_graph.nodes[sink_node.node_id]
-                rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.ConditionalEdgeRepresentation)
+                rep_edge = RepresentationalEdge(src, sink, RepresentationalEdgeType.CONDITIONAL)
                 rep_graph.edges.append(rep_edge)
                 src.outgoing_edges.append(rep_edge)
                 sink.incoming_edges.append(rep_edge)
@@ -713,7 +710,7 @@ class GraphVisualizer:
         
         return levels
 
-    def visualize(self) -> None:
+    def visualize(self, show: bool = True) -> None:
         levels = self._compute_levels()
         
         # Group nodes by level.
@@ -759,7 +756,7 @@ class GraphVisualizer:
             end_pos = pos[sink_id]
 
             # Decide arrow style based on edge type.
-            if edge.edge_type.name == "ConcreteEdgeRepresentation":
+            if edge.edge_type.name == RepresentationalEdgeType.CONCRETE:
                 # Straight arrow, e.g., color='gray'
                 color = "gray"
                 connection_style = "arc3,rad=0.0"  # no curvature
@@ -788,4 +785,5 @@ class GraphVisualizer:
         ax.autoscale()
         ax.axis('off')
         plt.tight_layout()
-        plt.show()
+        if show:
+            plt.show()
