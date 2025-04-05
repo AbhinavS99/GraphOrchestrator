@@ -1487,3 +1487,61 @@ async def test_71_mixed_complex_graph():
     for item in expected:
         assert item in final_state.messages, f"{item} not found in {final_state.messages}"
     assert "branch_tool" in final_state.messages or "branch_agg" in final_state.messages
+
+import asyncio
+import pytest
+from graphorchestrator.GraphExecutorStatic import (
+    GraphBuilder,
+    ProcessingNode,
+    AggregatorNode,
+    GraphExecutor,
+    State,
+    node_action,
+    aggregator_action
+)
+
+@pytest.mark.asyncio
+async def test_71_concurrency_limit():
+    # Local counters to track concurrency.
+    counters = {"current": 0, "max": 0}
+
+    @node_action
+    async def delayed_node(state: State) -> State:
+        counters["current"] += 1
+        counters["max"] = max(counters["max"], counters["current"])
+        # Simulate work with a delay.
+        await asyncio.sleep(0.2)
+        counters["current"] -= 1
+        state.messages.append("done")
+        return state
+
+    @aggregator_action
+    def merge_states(states: list[State]) -> State:
+        merged = State(messages=[])
+        for s in states:
+            merged.messages.extend(s.messages)
+        return merged
+
+    builder = GraphBuilder()
+    # Add the aggregator node first so it exists when processing nodes connect to it.
+    builder.add_aggregator(AggregatorNode("agg", merge_states))
+    
+    # Create 5 processing nodes.
+    for i in range(5):
+         node_id = f"node_{i}"
+         builder.add_node(ProcessingNode(node_id, delayed_node))
+         builder.add_concrete_edge("start", node_id)
+         builder.add_concrete_edge(node_id, "agg")
+    
+    # Connect aggregator node to the "end" node.
+    builder.add_concrete_edge("agg", "end")
+    
+    graph = builder.build_graph()
+    # Set max_workers to 2 so that at most 2 nodes run concurrently.
+    executor = GraphExecutor(graph, State(messages=[]), max_workers=2)
+    final_state = await executor.execute()
+    
+    # Verify that all 5 processing nodes appended "done".
+    assert final_state.messages.count("done") == 5
+    # Ensure that the maximum concurrent executions did not exceed 2.
+    assert counters["max"] <= 2
