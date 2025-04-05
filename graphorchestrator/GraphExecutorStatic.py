@@ -522,22 +522,24 @@ class GraphExecutor:
         self.active_states: Dict[str, List[State]] = defaultdict(list)
         self.active_states[graph.start_node.node_id].append(initial_state)
         self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
+        self.semaphore = asyncio.Semaphore(self.max_workers)
 
     async def _execute_node_with_retry_async(self, node, input_data, retry_policy):
         attempt = 0
         delay = retry_policy.delay
         while attempt <= retry_policy.max_retries:
-            try:
-                if asyncio.iscoroutinefunction(node.execute):
-                    return await node.execute(input_data)
-                return node.execute(input_data)
-            except Exception as e:
-                if attempt == retry_policy.max_retries:
-                    raise e
-                logging.warning(f"[ASYNC] Node '{node.node_id}' failed (attempt {attempt + 1}): {e}. Retrying in {delay}s.")
-                await asyncio.sleep(delay)
-                delay *= retry_policy.backoff
-                attempt += 1
+            async with self.semaphore: 
+                try:
+                    if asyncio.iscoroutinefunction(node.execute):
+                        return await node.execute(input_data)
+                    return node.execute(input_data)
+                except Exception as e:
+                    if attempt == retry_policy.max_retries:
+                        raise e
+                    logging.warning(f"[ASYNC] Node '{node.node_id}' failed (attempt {attempt + 1}): {e}. Retrying in {delay}s.")
+                    await asyncio.sleep(delay)
+                    delay *= retry_policy.backoff
+                    attempt += 1
 
     async def execute(self, max_supersteps: int = 100, superstep_timeout: float = 300.0) -> Optional[State]:
         logging.info("🚀 Beginning graph execution...")
