@@ -3,8 +3,11 @@ import pytest
 import random
 from typing import List
 
-from graphorchestrator.GraphExecutorStatic import (
-    State,
+# Core
+from graphorchestrator.core.state import State
+from graphorchestrator.core.retry import RetryPolicy
+from graphorchestrator.ai.ai_action import AIActionBase
+from graphorchestrator.core.exceptions import (
     DuplicateNodeError,
     NodeNotFoundError,
     EdgeExistsError,
@@ -17,22 +20,34 @@ from graphorchestrator.GraphExecutorStatic import (
     GraphConfigurationError,
     EmptyToolNodeDescriptionError,
     GraphExecutionError,
+    InvalidAIActionOutput
+)
+
+# Decorators
+from graphorchestrator.decorators.actions import (
+    node_action,
+    routing_function,
+    tool_method,
+    aggregator_action
+)
+from graphorchestrator.decorators.builtin_actions import (
+    passThrough,
+    selectRandomState
+)
+
+# Nodes and Edges
+from graphorchestrator.nodes.nodes import (
     ProcessingNode,
     AggregatorNode,
     ToolNode,
-    ConditionalEdge,
-    RetryPolicy,
-    GraphBuilder,
-    GraphExecutor,
-    AIActionBase,
-    AINode,
-    passThrough,
-    selectRandomState,
-    node_action,
-    aggregator_action,
-    routing_function,
-    tool_method
+    AINode
 )
+from graphorchestrator.edges.conditional import ConditionalEdge
+
+# Graph Core
+from graphorchestrator.graph.builder import GraphBuilder
+from graphorchestrator.graph.executor import GraphExecutor
+
 
 def test_01_valid_node_action_decorator():
     @node_action
@@ -1488,20 +1503,8 @@ async def test_71_mixed_complex_graph():
         assert item in final_state.messages, f"{item} not found in {final_state.messages}"
     assert "branch_tool" in final_state.messages or "branch_agg" in final_state.messages
 
-import asyncio
-import pytest
-from graphorchestrator.GraphExecutorStatic import (
-    GraphBuilder,
-    ProcessingNode,
-    AggregatorNode,
-    GraphExecutor,
-    State,
-    node_action,
-    aggregator_action
-)
-
 @pytest.mark.asyncio
-async def test_71_concurrency_limit():
+async def test_72_concurrency_limit():
     # Local counters to track concurrency.
     counters = {"current": 0, "max": 0}
 

@@ -1,15 +1,20 @@
 import matplotlib
-from graphorchestrator.GraphExecutorStatic import (
-    GraphBuilder,
-    ProcessingNode,
-    AggregatorNode,
-    RepresentationalGraph,
-    GraphVisualizer,
-    routing_function,
-    passThrough,
-    selectRandomState
-)
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # Use non-interactive backend for testing
+
+# Decorators
+from graphorchestrator.decorators.actions import routing_function
+from graphorchestrator.decorators.builtin_actions import passThrough, selectRandomState
+
+# Nodes
+from graphorchestrator.nodes.nodes import ProcessingNode, AggregatorNode
+
+# Graph
+from graphorchestrator.graph.builder import GraphBuilder
+
+# Visualization
+from graphorchestrator.visualization.representation import RepresentationalGraph
+from graphorchestrator.visualization.visualizer import GraphVisualizer
+
 
 def testv_01_conversion_test():
     @routing_function
