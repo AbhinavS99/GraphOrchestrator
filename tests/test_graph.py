@@ -453,7 +453,7 @@ def test_26_toolnode_missing_description():
     tool_method.is_tool_method = True
     with pytest.raises(EmptyToolNodeDescriptionError):
         # Attempt to create a ToolNode without a description.
-        _ = ToolNode("tool", tool_method, description="")
+        _ = ToolNode("tool", "", tool_method)
 
 @pytest.mark.asyncio
 async def test_27_successful_toolnode_execution():
@@ -464,7 +464,7 @@ async def test_27_successful_toolnode_execution():
         state.messages.append(999)
         return state
     builder = GraphBuilder()
-    tool_node = ToolNode("tool", valid_tool, description="Appends 999 to state")
+    tool_node = ToolNode("tool", "Appends 999 to state", valid_tool)
     builder.add_node(tool_node)
     builder.add_concrete_edge("start", "tool")
     builder.add_concrete_edge("tool", "end")
@@ -540,7 +540,7 @@ def test_31_tool_method_not_decorated():
         return state
     # Do not set the is_tool_method flag.
     with pytest.raises(ToolMethodNotDecorated):
-        _ = ToolNode("tool", not_decorated_tool, description="Has no proper decoration")
+        _ = ToolNode("tool", "Has no proper decoration", not_decorated_tool)
 
 @pytest.mark.asyncio
 async def test_32_node_execution_timeout():
@@ -675,7 +675,7 @@ async def test_38_toolnode_docstring_suffices():
         state.messages.append("OK")
         return state
 
-    tool_node = ToolNode("doc_tool", documented_tool, description=None)
+    tool_node = ToolNode("doc_tool", None, documented_tool)
     builder = GraphBuilder()
     builder.add_node(tool_node)
     builder.add_concrete_edge("start", "doc_tool")
@@ -787,8 +787,8 @@ async def test_43_async_toolnodes_parallel_execution():
         return state
 
     builder = GraphBuilder()
-    builder.add_node(ToolNode("tool1", async_tool, description="Async Tool"))
-    builder.add_node(ToolNode("tool2", async_tool, description="Async Tool"))
+    builder.add_node(ToolNode("tool1", "Async Tool", async_tool))
+    builder.add_node(ToolNode("tool2", "Async Tool", async_tool))
     builder.add_concrete_edge("start", "tool1")
     builder.add_concrete_edge("start", "tool2")
     builder.add_concrete_edge("tool1", "end")
@@ -819,7 +819,7 @@ async def test_44_heavy_parallel_graph():
     # Create 20 parallel heavy_tool nodes.
     for i in range(20):
         node_id = f"node_{i}"
-        builder.add_node(ToolNode(node_id, heavy_tool, f"Heavy tool {i}"))
+        builder.add_node(ToolNode(node_id, f"Heavy tool {i}", heavy_tool))
         builder.add_concrete_edge("start", node_id)
     # An aggregator to combine the outputs.
     builder.add_aggregator(AggregatorNode("agg_heavy", combine_heavy))
@@ -843,8 +843,8 @@ async def test_45_graph_with_only_toolnodes():
         return state
 
     builder = GraphBuilder()
-    builder.add_node(ToolNode("tool1", tool_step, description="1st Tool"))
-    builder.add_node(ToolNode("tool2", tool_step, description="2nd Tool"))
+    builder.add_node(ToolNode("tool1", "1st Tool", tool_step))
+    builder.add_node(ToolNode("tool2", "2nd Tool", tool_step))
     builder.add_concrete_edge("start", "tool1")
     builder.add_concrete_edge("tool1", "tool2")
     builder.add_concrete_edge("tool2", "end")
@@ -892,7 +892,7 @@ async def test_48_processing_node_async():
 async def test_49_tool_node_async():
     @tool_method
     async def tool(state): await asyncio.sleep(0.01); state.messages.append("tool"); return state
-    node = ToolNode("tool", tool, "description")
+    node = ToolNode("tool", "description", tool)
     result = await node.execute(State(messages=[]))
     assert result.messages == ["tool"]
 
@@ -951,7 +951,7 @@ async def test_54_graph_mixed_nodes():
 
     builder = GraphBuilder()
     builder.add_node(ProcessingNode("p1", p1))
-    builder.add_node(ToolNode("t1", t1, "desc"))
+    builder.add_node(ToolNode("t1", "desc", t1))
     builder.add_node(ProcessingNode("p2", p2))
     builder.add_aggregator(AggregatorNode("agg", agg))
 
@@ -991,7 +991,7 @@ async def test_56_retry_logic_on_tool_node():
         state.messages.append("recovered")
         return state
     builder = GraphBuilder()
-    builder.add_node(ToolNode("flaky", flaky_tool, "unstable"))
+    builder.add_node(ToolNode("flaky", "unstable", flaky_tool))
     builder.add_concrete_edge("start", "flaky")
     builder.add_concrete_edge("flaky", "end")
     result = await GraphExecutor(builder.build_graph(), State(messages=[])).execute()
@@ -1020,8 +1020,8 @@ async def test_57_parallel_nodes_with_aggregator():
         return merged
 
     builder = GraphBuilder()
-    builder.add_node(ToolNode("t1", async_tool1, "Async tool 1"))
-    builder.add_node(ToolNode("t2", async_tool2, "Async tool 2"))
+    builder.add_node(ToolNode("t1", "Async tool 1", async_tool1))
+    builder.add_node(ToolNode("t2", "Async tool 2", async_tool2))
     builder.add_aggregator(AggregatorNode("agg", merge_agg))
     builder.add_concrete_edge("start", "t1")
     builder.add_concrete_edge("start", "t2")
@@ -1136,7 +1136,7 @@ async def test_61_robust_parallel_random_delays():
     builder = GraphBuilder()
     # Add 5 parallel delayed nodes.
     for i in range(5):
-        builder.add_node(ToolNode(f"tool{i}", delayed_tool, f"delayed tool {i}"))
+        builder.add_node(ToolNode(f"tool{i}", f"delayed tool {i}", delayed_tool))
         builder.add_concrete_edge("start", f"tool{i}")
     # Aggregator node to merge outputs.
     builder.add_aggregator(AggregatorNode("agg", merge_messages))
@@ -1299,8 +1299,8 @@ async def test_66_mixed_sync_async_toolnodes():
         return merged
 
     builder = GraphBuilder()
-    builder.add_node(ToolNode("sync", sync_tool, "Sync Tool"))
-    builder.add_node(ToolNode("async", async_tool, "Async Tool"))
+    builder.add_node(ToolNode("sync", "Sync Tool", sync_tool))
+    builder.add_node(ToolNode("async", "Async Tool", async_tool))
     builder.add_aggregator(AggregatorNode("agg", merge_tools))
     builder.add_concrete_edge("start", "sync")
     builder.add_concrete_edge("start", "async")
@@ -1480,7 +1480,7 @@ async def test_71_mixed_complex_graph():
 
     builder = GraphBuilder()
     builder.add_node(ProcessingNode("proc1", proc1))
-    builder.add_node(ToolNode("tool1", tool1, "Tool Node 1"))
+    builder.add_node(ToolNode("tool1", "Tool Node 1", tool1))
     builder.add_node(ProcessingNode("proc2", proc2))
     builder.add_aggregator(AggregatorNode("agg1", agg1))
     # Add branch nodes before adding the conditional edge.
