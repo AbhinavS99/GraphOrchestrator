@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Any
 
 from graphorchestrator.core.state import State
 from graphorchestrator.core.exceptions import (
@@ -41,7 +41,7 @@ class AggregatorNode(Node):
         return result
 
 class ToolNode(ProcessingNode):
-    def __init__(self, node_id: str, tool_method: Callable[[State], State], description: Optional[str]) -> None:
+    def __init__(self, node_id: str,  description: Optional[str], tool_method: Callable[[State], State]) -> None:
         if not getattr(tool_method, "is_tool_method", False):
             raise ToolMethodNotDecorated(tool_method)
         if not (description or (tool_method.__doc__ or "").strip()):
@@ -57,9 +57,11 @@ class ToolNode(ProcessingNode):
         return result
 
 class AINode(ProcessingNode):
-    def __init__(self, node_id: str, description: str, model_action: Callable[[State], State]) -> None:
+    def __init__(self, node_id: str, description: str, model_action: Callable[[State], State], response_format: Optional[str] = None, response_parser: Optional[Callable[[State], Any]] = None) -> None:
         super().__init__(node_id, model_action)
         self.description = description
+        self.response_format = response_format
+        self.response_parser = response_parser
         logging.info(f"node=ai event=created node_id={self.node_id} desc={description}")
 
     async def execute(self, state: State) -> State:
