@@ -13,6 +13,21 @@ from graphorchestrator.core.exceptions import (
 
 
 def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
+    """
+    Decorator to mark a function as a routing function.
+
+    A routing function is responsible for deciding which node to execute next
+    based on the current state of the graph. It receives the current state as
+    input and should return the name of the next node as a string.
+
+    Args:
+        func: The function to be decorated. It should accept a State object and
+            return a string (the name of the next node).
+
+    Returns:
+        A decorated function that performs the routing logic and type checking.
+
+    """
     @wraps(func)
     async def wrapper(state: State) -> str:
         show_state = getattr(func, "show_state", False)
@@ -29,6 +44,22 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
 
 
 def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
+    """
+    Decorator to mark a function as a node action.
+
+    A node action is a function that performs a specific task within a node
+    in the graph. It receives the current state as input, modifies it, and
+    returns the updated state.
+
+    Args:
+        func: The function to be decorated. It should accept a State object,
+            modify it as needed, and return the updated State object.
+
+    Returns:
+        A decorated function that performs the node action logic and type checking.
+
+    """
+
     @wraps(func)
     async def wrapper(state: State) -> State:
         show_state = getattr(func, "show_state", False)
@@ -45,6 +76,22 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
 
 
 def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
+    """
+    Decorator to mark a function as a tool method.
+
+    A tool method is a function that represents a specific method within a
+    tool. It receives the current state as input, performs a task using
+    the tool, and returns the updated state. It is also a node action.
+
+    Args:
+        func: The function to be decorated. It should accept a State object,
+            interact with the tool as needed, and return the updated State
+            object.
+
+    Returns:
+        A decorated function that performs the tool method logic and type checking.
+
+    """
     @wraps(func)
     async def wrapper(state: State) -> State:
         show_state = getattr(func, "show_state", False)
@@ -62,6 +109,23 @@ def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
 
 
 def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[State]], State]:
+    """
+    Decorator to mark a function as an aggregator action.
+
+    An aggregator action is a function that combines multiple states into a
+    single state. This is useful when multiple nodes produce intermediate
+    states that need to be merged.
+
+    Args:
+        func: The function to be decorated. It should accept a list of State
+            objects, combine them into a single state, and return the
+            resulting State object.
+
+    Returns:
+        A decorated function that performs the aggregator action logic and
+        type checking.
+
+    """
     @wraps(func)
     async def wrapper(states: List[State]) -> State:
         show_state = getattr(func, "show_state", False)
