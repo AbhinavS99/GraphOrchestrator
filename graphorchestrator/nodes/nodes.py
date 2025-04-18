@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import httpx
-from typing import Callable, List, Optional, Any
+from typing import Callable, List, Optional, Any, Dict, Awaitable
 from graphorchestrator.decorators.actions import node_action
 
 from graphorchestrator.core.state import State
@@ -10,7 +10,8 @@ from graphorchestrator.core.exceptions import (
     AggregatorActionNotDecorated,
     EmptyToolNodeDescriptionError,
     ToolMethodNotDecorated,
-    InvalidAIActionOutput
+    InvalidAIActionOutput,
+    InvalidNodeActionOutput,
 )
 from graphorchestrator.nodes.base import Node
 from graphorchestrator.core.retry import RetryPolicy
@@ -155,6 +156,70 @@ class AINode(ProcessingNode):
             raise InvalidAIActionOutput(result)
         logging.debug(f"node=ai event=execute_end node_id={self.node_id} result_size={len(result.messages)}")
         return result
+    
+class HumanInTheLoopNode(ProcessingNode):
+    """
+    A node that pauses execution for human input.
+
+    This node allows a human to manually inspect and modify the state before execution proceeds.
+    The interaction logic is user-defined and can involve CLI prompts, UIs, webhooks, etc.
+
+    Args:
+        node_id (str): The unique identifier for the human-in-the-loop node.
+        interaction_handler (Callable[[State], State]): The async function that handles human interaction.
+        metadata (Optional[Dict[str, str]]): Optional metadata describing the human input or prompt.
+        retry_policy (Optional[RetryPolicy]): Retry logic in case the interaction handler fails.
+
+    Raises:
+        InvalidNodeActionOutput: If the interaction handler returns an invalid state.
+        GraphExecutionError: If all retry attempts fail.
+    """
+    def __init__(self, node_id: str, interaction_handler: Callable[[State], Awaitable[State]], metadata: Optional[Dict[str, str]] = None, retry_policy: Optional[RetryPolicy] = None) -> None:
+        if not getattr(interaction_handler, "is_node_action", False):
+            interaction_handler = node_action(interaction_handler)
+
+        self.metadata = metadata or {}
+        self.retry_policy = retry_policy or RetryPolicy()
+
+        logging.info(f"node=human event=created node_id={node_id} metadata_keys={list(self.metadata.keys())}")
+        super().__init__(node_id, interaction_handler)
+
+    async def execute(self, state: State) -> State:
+        """
+        Executes the human-in-the-loop interaction.
+
+        This will attempt to call the user-defined handler, and retry on failure
+        according to the configured retry policy.
+
+        Args:
+            state (State): The input state awaiting human intervention.
+
+        Returns:
+            State: The state after human interaction.
+
+        Raises:
+            Exception: If all retries fail.
+        """
+        attempt = 0
+        delay = self.retry_policy.delay
+
+        while attempt <= self.retry_policy.max_retries:
+            try:
+                logging.debug(f"node=human event=execute_start node_id={self.node_id} attempt={attempt} input_size={len(state.messages)}")
+                result = await self.func(state)
+                if not isinstance(result, State):
+                    logging.error(f"node=human event=invalid_output node_id={self.node_id} result_type={type(result)}")
+                    raise InvalidNodeActionOutput(result)
+                logging.debug(f"node=human event=execute_end node_id={self.node_id} result_size={len(result.messages)}")
+                return result
+            except Exception as e:
+                logging.warning(f"node=human event=retry_failed node_id={self.node_id} attempt={attempt} error={str(e)}")
+                if attempt == self.retry_policy.max_retries:
+                    raise e
+                await asyncio.sleep(delay)
+                delay *= self.retry_policy.backoff
+                attempt += 1
+
 
 class ToolSetNode(ProcessingNode):
     """
@@ -224,7 +289,7 @@ class ToolSetNode(ProcessingNode):
                             f"node=toolset event=fail node_id={self.node_id} "
                             f"max_retries_exceeded"
                         )
-                        raise
+                        raise e
                     await asyncio.sleep(delay)
                     attempt += 1
                     delay *= rp.backoff
