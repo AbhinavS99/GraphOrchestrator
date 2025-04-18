@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import httpx
 from typing import Callable, List, Optional, Any
+from graphorchestrator.decorators.actions import node_action
 
 from graphorchestrator.core.state import State
 from graphorchestrator.core.exceptions import (
@@ -11,6 +13,7 @@ from graphorchestrator.core.exceptions import (
     InvalidAIActionOutput
 )
 from graphorchestrator.nodes.base import Node
+from graphorchestrator.core.retry import RetryPolicy
 
 class ProcessingNode(Node):
     """
@@ -152,3 +155,78 @@ class AINode(ProcessingNode):
             raise InvalidAIActionOutput(result)
         logging.debug(f"node=ai event=execute_end node_id={self.node_id} result_size={len(result.messages)}")
         return result
+
+class ToolSetNode(ProcessingNode):
+    """
+    A ProcessingNode that invokes a remote ToolSetServer endpoint as an HTTP call,
+    merges its returned State back into the flow, and applies a retry policy.
+
+    Each execution:
+      1. Sends the current State.messages as JSON to `{base_url}/tools/{tool_name}`.
+      2. Parses the JSON response into a new State.
+      3. On HTTP or network errors, retries up to `retry_policy.max_retries`,
+         waiting `retry_policy.delay` seconds (with backoff) between attempts.
+
+    Args:
+        node_id (str): Unique identifier for this node.
+        base_url (str): Base URL of the ToolSetServer (trailing slash is stripped).
+        tool_name (str): Name of the tool (path segment under `/tools`).
+        retry_policy (Optional[RetryPolicy]): RetryPolicy for transient failures.
+    """
+    httpx = httpx
+    def __init__(self, node_id: str, base_url: str, tool_name: str, retry_policy: Optional[RetryPolicy] = None) -> None:
+        # Normalize base_url (drop any trailing slash)
+        self.base_url = base_url.rstrip('/')
+        self.tool_name = tool_name
+        self.retry_policy = retry_policy or RetryPolicy()
+
+        # Build the actual node action
+        action = self._make_tool_action()
+        super().__init__(node_id, action)
+
+    def _make_tool_action(self) -> Callable[[State], State]:
+        """
+        Constructs the @node_action-wrapped coroutine that performs the HTTP call
+        with retry logic.
+        """
+        rp = self.retry_policy
+        url = f"{self.base_url}/tools/{self.tool_name}"
+
+        @node_action
+        async def _action(state: State) -> State:
+            logging.info(
+                f"node=toolset event=start node_id={self.node_id} url={url} "
+                f"retry=({rp.max_retries}@{rp.delay}s,backoff={rp.backoff})"
+            )
+            attempt = 0
+            delay = rp.delay
+            payload = {"messages": state.messages}
+
+            while True:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(url, json=payload, timeout=10.0)
+                        resp.raise_for_status()
+                        data = resp.json()
+                        new_state = State(messages=data.get("messages", []))
+                        logging.info(
+                            f"node=toolset event=success node_id={self.node_id} "
+                            f"attempt={attempt} messages={len(new_state.messages)}"
+                        )
+                        return new_state
+                except Exception as e:
+                    logging.warning(
+                        f"node=toolset event=error node_id={self.node_id} "
+                        f"attempt={attempt+1} error={e}"
+                    )
+                    if attempt >= rp.max_retries:
+                        logging.error(
+                            f"node=toolset event=fail node_id={self.node_id} "
+                            f"max_retries_exceeded"
+                        )
+                        raise
+                    await asyncio.sleep(delay)
+                    attempt += 1
+                    delay *= rp.backoff
+
+        return _action
