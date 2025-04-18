@@ -20,7 +20,6 @@ from graphorchestrator.core.exceptions import (
     GraphConfigurationError,
     EmptyToolNodeDescriptionError,
     GraphExecutionError,
-    InvalidAIActionOutput
 )
 
 # Decorators
@@ -40,7 +39,8 @@ from graphorchestrator.nodes.nodes import (
     ProcessingNode,
     AggregatorNode,
     ToolNode,
-    AINode
+    AINode,
+    HumanInTheLoopNode
 )
 from graphorchestrator.edges.conditional import ConditionalEdge
 
@@ -1548,3 +1548,78 @@ async def test_72_concurrency_limit():
     assert final_state.messages.count("done") == 5
     # Ensure that the maximum concurrent executions did not exceed 2.
     assert counters["max"] <= 2
+
+@pytest.mark.asyncio
+async def test_73_human_node_sync_success():
+    @node_action
+    def sync_handler(state: State) -> State:
+        state.messages.append("approved")
+        return state
+
+    node = HumanInTheLoopNode("hitl_sync", sync_handler)
+    result = await node.execute(State(messages=["start"]))
+    assert "approved" in result.messages
+
+@pytest.mark.asyncio
+async def test_74_human_node_async_success():
+    @node_action
+    async def async_handler(state: State) -> State:
+        await asyncio.sleep(0.01)
+        state.messages.append("async approved")
+        return state
+
+    node = HumanInTheLoopNode("hitl_async", async_handler)
+    result = await node.execute(State(messages=["go"]))
+    assert "async approved" in result.messages
+
+@pytest.mark.asyncio
+async def test_75_human_node_with_retry_success():
+    attempts = {"count": 0}
+
+    @node_action
+    async def flaky_handler(state: State) -> State:
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise Exception("Simulated failure")
+        state.messages.append("success after retries")
+        return state
+
+    node = HumanInTheLoopNode(
+        "hitl_retry",
+        flaky_handler,
+        retry_policy=RetryPolicy(max_retries=4, delay=0.01, backoff=1)
+    )
+
+    result = await node.execute(State(messages=[]))
+    assert "success after retries" in result.messages
+    assert attempts["count"] == 3
+
+@pytest.mark.asyncio
+async def test_76_human_node_retries_exhausted():
+    @node_action
+    async def always_fail(state: State) -> State:
+        raise Exception("Nope")
+
+    node = HumanInTheLoopNode(
+        "hitl_fail",
+        always_fail,
+        retry_policy=RetryPolicy(max_retries=2, delay=0.01, backoff=1)
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        await node.execute(State(messages=[]))
+
+    assert "Nope" in str(excinfo.value)
+
+@pytest.mark.asyncio
+async def test_77_human_node_invalid_return_type():
+    @node_action
+    async def bad_handler(state: State):
+        return "not a state"
+
+    node = HumanInTheLoopNode("bad_node", bad_handler)
+
+    with pytest.raises(InvalidNodeActionOutput) as excinfo:
+        await node.execute(State(messages=["X"]))
+
+    assert "not a state" in str(excinfo.value)
