@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import Optional
 
 class Node(ABC):
     """
@@ -18,6 +19,7 @@ class Node(ABC):
         self.node_id: str = node_id
         self.incoming_edges = []
         self.outgoing_edges = []
+        self.fallback_node_id: Optional[str] = None 
         
         # Log the initialization of the node
         logging.info(
@@ -33,3 +35,6 @@ class Node(ABC):
             state: The current state of the execution.
         """
         raise NotImplementedError
+
+    def set_fallback(self, fallback_node_id: str):
+        self.fallback_node_id = fallback_node_id

@@ -29,6 +29,14 @@ class GraphBuilder:
         self.graph.nodes[node.node_id] = node
         logging.info(f"graph=builder event=node_added node_id={node.node_id}")
 
+    def set_fallback_node(self, node_id: str, fallback_node_id: str):
+        if node_id not in self.graph.nodes:
+            raise NodeNotFoundError(node_id)
+        if fallback_node_id not in self.graph.nodes:
+            raise NodeNotFoundError(fallback_node_id)
+        self.graph.nodes[node_id].set_fallback(fallback_node_id)
+        logging.debug(f"graph=builder event=set_fallback_node node={node_id} fallback={fallback_node_id}")
+
     def add_aggregator(self, aggregator: AggregatorNode):
         logging.debug(f"graph=builder event=add_aggregator node_id={aggregator.node_id}")
         self.add_node(aggregator)
