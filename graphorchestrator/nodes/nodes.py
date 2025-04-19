@@ -168,28 +168,21 @@ class HumanInTheLoopNode(ProcessingNode):
         node_id (str): The unique identifier for the human-in-the-loop node.
         interaction_handler (Callable[[State], State]): The async function that handles human interaction.
         metadata (Optional[Dict[str, str]]): Optional metadata describing the human input or prompt.
-        retry_policy (Optional[RetryPolicy]): Retry logic in case the interaction handler fails.
 
     Raises:
         InvalidNodeActionOutput: If the interaction handler returns an invalid state.
-        GraphExecutionError: If all retry attempts fail.
     """
-    def __init__(self, node_id: str, interaction_handler: Callable[[State], Awaitable[State]], metadata: Optional[Dict[str, str]] = None, retry_policy: Optional[RetryPolicy] = None) -> None:
+    def __init__(self, node_id: str, interaction_handler: Callable[[State], Awaitable[State]], metadata: Optional[Dict[str, str]] = None) -> None:
         if not getattr(interaction_handler, "is_node_action", False):
             interaction_handler = node_action(interaction_handler)
 
         self.metadata = metadata or {}
-        self.retry_policy = retry_policy or RetryPolicy()
-
         logging.info(f"node=human event=created node_id={node_id} metadata_keys={list(self.metadata.keys())}")
         super().__init__(node_id, interaction_handler)
 
     async def execute(self, state: State) -> State:
         """
         Executes the human-in-the-loop interaction.
-
-        This will attempt to call the user-defined handler, and retry on failure
-        according to the configured retry policy.
 
         Args:
             state (State): The input state awaiting human intervention.
@@ -198,100 +191,55 @@ class HumanInTheLoopNode(ProcessingNode):
             State: The state after human interaction.
 
         Raises:
-            Exception: If all retries fail.
+            InvalidNodeActionOutput: If the interaction handler returns invalid output.
         """
-        attempt = 0
-        delay = self.retry_policy.delay
-
-        while attempt <= self.retry_policy.max_retries:
-            try:
-                logging.debug(f"node=human event=execute_start node_id={self.node_id} attempt={attempt} input_size={len(state.messages)}")
-                result = await self.func(state)
-                if not isinstance(result, State):
-                    logging.error(f"node=human event=invalid_output node_id={self.node_id} result_type={type(result)}")
-                    raise InvalidNodeActionOutput(result)
-                logging.debug(f"node=human event=execute_end node_id={self.node_id} result_size={len(result.messages)}")
-                return result
-            except Exception as e:
-                logging.warning(f"node=human event=retry_failed node_id={self.node_id} attempt={attempt} error={str(e)}")
-                if attempt == self.retry_policy.max_retries:
-                    raise e
-                await asyncio.sleep(delay)
-                delay *= self.retry_policy.backoff
-                attempt += 1
-
-
+        logging.debug(f"node=human event=execute_start node_id={self.node_id} input_size={len(state.messages)}")
+        result = await self.func(state)
+        if not isinstance(result, State):
+            logging.error(f"node=human event=invalid_output node_id={self.node_id} result_type={type(result)}")
+            raise InvalidNodeActionOutput(result)
+        logging.debug(f"node=human event=execute_end node_id={self.node_id} result_size={len(result.messages)}")
+        return result
+    
 class ToolSetNode(ProcessingNode):
     """
-    A ProcessingNode that invokes a remote ToolSetServer endpoint as an HTTP call,
-    merges its returned State back into the flow, and applies a retry policy.
+    A ProcessingNode that invokes a remote ToolSetServer endpoint as an HTTP call.
 
     Each execution:
-      1. Sends the current State.messages as JSON to `{base_url}/tools/{tool_name}`.
-      2. Parses the JSON response into a new State.
-      3. On HTTP or network errors, retries up to `retry_policy.max_retries`,
-         waiting `retry_policy.delay` seconds (with backoff) between attempts.
+    1. Sends the current State.messages as JSON to `{base_url}/tools/{tool_name}`.
+    2. Parses the JSON response into a new State.
 
     Args:
         node_id (str): Unique identifier for this node.
         base_url (str): Base URL of the ToolSetServer (trailing slash is stripped).
         tool_name (str): Name of the tool (path segment under `/tools`).
-        retry_policy (Optional[RetryPolicy]): RetryPolicy for transient failures.
     """
     httpx = httpx
-    def __init__(self, node_id: str, base_url: str, tool_name: str, retry_policy: Optional[RetryPolicy] = None) -> None:
-        # Normalize base_url (drop any trailing slash)
+
+    def __init__(self, node_id: str, base_url: str, tool_name: str) -> None:
         self.base_url = base_url.rstrip('/')
         self.tool_name = tool_name
-        self.retry_policy = retry_policy or RetryPolicy()
-
-        # Build the actual node action
         action = self._make_tool_action()
         super().__init__(node_id, action)
 
     def _make_tool_action(self) -> Callable[[State], State]:
         """
-        Constructs the @node_action-wrapped coroutine that performs the HTTP call
-        with retry logic.
+        Constructs the @node_action-wrapped coroutine that performs the HTTP call.
         """
-        rp = self.retry_policy
         url = f"{self.base_url}/tools/{self.tool_name}"
 
         @node_action
         async def _action(state: State) -> State:
-            logging.info(
-                f"node=toolset event=start node_id={self.node_id} url={url} "
-                f"retry=({rp.max_retries}@{rp.delay}s,backoff={rp.backoff})"
-            )
-            attempt = 0
-            delay = rp.delay
+            logging.info(f"node=toolset event=start node_id={self.node_id} url={url}")
             payload = {"messages": state.messages}
-
-            while True:
-                try:
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(url, json=payload, timeout=10.0)
-                        resp.raise_for_status()
-                        data = resp.json()
-                        new_state = State(messages=data.get("messages", []))
-                        logging.info(
-                            f"node=toolset event=success node_id={self.node_id} "
-                            f"attempt={attempt} messages={len(new_state.messages)}"
-                        )
-                        return new_state
-                except Exception as e:
-                    logging.warning(
-                        f"node=toolset event=error node_id={self.node_id} "
-                        f"attempt={attempt+1} error={e}"
-                    )
-                    if attempt >= rp.max_retries:
-                        logging.error(
-                            f"node=toolset event=fail node_id={self.node_id} "
-                            f"max_retries_exceeded"
-                        )
-                        raise e
-                    await asyncio.sleep(delay)
-                    attempt += 1
-                    delay *= rp.backoff
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, json=payload, timeout=10.0)
+                resp.raise_for_status()
+                data = resp.json()
+                new_state = State(messages=data.get("messages", []))
+                logging.info(
+                    f"node=toolset event=success node_id={self.node_id} messages={len(new_state.messages)}"
+                )
+                return new_state
 
         return _action

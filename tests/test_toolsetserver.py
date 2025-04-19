@@ -224,46 +224,7 @@ async def test_08_toolsetnode_basic_invocation(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_09_toolsetnode_retries_and_succeeds(monkeypatch):
-    # Fail the first two times, succeed on the third
-    call_count = {"n": 0}
-
-    class DummyResponse:
-        def __init__(self, data):
-            self._data = data
-            self.status_code = 200
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return self._data
-
-    class DummyClient:
-        def __init__(self, *args, **kwargs):
-            pass
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, exc_type, exc, tb):
-            pass
-        async def post(self, url, json, timeout):
-            call_count["n"] += 1
-            if call_count["n"] < 3:
-                raise httpx.RequestError("temporary failure")
-            return DummyResponse({"messages": ["OK"]})
-
-    monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.ToolSetNode.httpx.AsyncClient",
-        DummyClient
-    )
-
-    policy = RetryPolicy(max_retries=5, delay=0, backoff=1)
-    node = ToolSetNode("t2", "http://fake", "pong", retry_policy=policy)
-    out = await node.execute(State(messages=[]))
-    assert out.messages == ["OK"]
-    assert call_count["n"] == 3
-
-
-@pytest.mark.asyncio
-async def test_10_toolsetnode_retries_exhausted_raises(monkeypatch):
+async def test_09_toolsetnode_retries_exhausted_raises(monkeypatch):
     # Always fail
     class DummyClient:
         def __init__(self, *args, **kwargs):
@@ -280,8 +241,7 @@ async def test_10_toolsetnode_retries_exhausted_raises(monkeypatch):
         DummyClient
     )
 
-    policy = RetryPolicy(max_retries=2, delay=0, backoff=1)
-    node = ToolSetNode("t3", "http://fake", "pong", retry_policy=policy)
+    node = ToolSetNode("t3", "http://fake", "pong")
     with pytest.raises(httpx.RequestError):
         await node.execute(State(messages=[]))
 
@@ -312,7 +272,7 @@ class DummyClientBase:
 # 1) Basic invocation: ToolSetNode should append "pong"
 # ──────────────────────────────────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_11_toolsetnode_basic_invocation(monkeypatch):
+async def test_10_toolsetnode_basic_invocation(monkeypatch):
     # Stub httpx.AsyncClient so post(...) always echoes + ["pong"]
     class DummyClient(DummyClientBase):
         async def post(self, url, json, timeout):
@@ -329,7 +289,6 @@ async def test_11_toolsetnode_basic_invocation(monkeypatch):
         node_id="call_tool",
         base_url="http://example.com/api/",
         tool_name="foo",
-        retry_policy=RetryPolicy(max_retries=2, delay=0.01, backoff=1)
     )
 
     # ensure trailing slash was stripped
@@ -341,38 +300,8 @@ async def test_11_toolsetnode_basic_invocation(monkeypatch):
     out_state = await node.execute(in_state)
     assert out_state.messages == ["hello", "pong"]
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 2) Retries: fail twice, succeed on third
-# ──────────────────────────────────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_12_toolsetnode_retries_and_succeeds(monkeypatch):
-    call_count = {"n": 0}
-
-    class DummyClient(DummyClientBase):
-        async def post(self, url, json, timeout):
-            call_count["n"] += 1
-            if call_count["n"] < 3:
-                raise asyncio.TimeoutError("temporary")
-            return DummyResponse({"messages": ["OK"]})
-
-    monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.httpx.AsyncClient",
-        DummyClient,
-        raising=True
-    )
-
-    rp = RetryPolicy(max_retries=5, delay=0.01, backoff=1)
-    node = ToolSetNode("n", "http://x", "foo", retry_policy=rp)
-
-    result = await node.execute(State(messages=[]))
-    assert result.messages == ["OK"]
-    assert call_count["n"] == 3
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 3) Exhaustion: always fail → exception after retries
-# ──────────────────────────────────────────────────────────────────────────────
-@pytest.mark.asyncio
-async def test_13_toolsetnode_retries_exhausted_raises(monkeypatch):
+async def test_11_toolsetnode_raises(monkeypatch):
     class DummyClient(DummyClientBase):
         async def post(self, url, json, timeout):
             raise Exception("permanent failure")
@@ -383,8 +312,7 @@ async def test_13_toolsetnode_retries_exhausted_raises(monkeypatch):
         raising=True
     )
 
-    rp = RetryPolicy(max_retries=2, delay=0.01, backoff=1)
-    node = ToolSetNode("n", "http://x", "foo", retry_policy=rp)
+    node = ToolSetNode("n", "http://x", "foo")
 
     with pytest.raises(Exception) as exc:
         await node.execute(State(messages=[]))
@@ -394,7 +322,7 @@ async def test_13_toolsetnode_retries_exhausted_raises(monkeypatch):
 # 4) Integration: use ToolSetNode inside a GraphExecutor
 # ──────────────────────────────────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_14_toolsetnode_integration_with_graphexecutor(monkeypatch):
+async def test_12_toolsetnode_integration_with_graphexecutor(monkeypatch):
     # stub to append ["pong"] to whatever arrives
     class DummyClient(DummyClientBase):
         async def post(self, url, json, timeout):
@@ -421,7 +349,7 @@ async def test_14_toolsetnode_integration_with_graphexecutor(monkeypatch):
 # 5) Concurrency: many ToolSetNode calls in parallel still work
 # ──────────────────────────────────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_15_toolsetnode_concurrent_execution(monkeypatch):
+async def test_13_toolsetnode_concurrent_execution(monkeypatch):
     class DummyClient(DummyClientBase):
         async def post(self, url, json, timeout):
             # simulate variable latency

@@ -1573,37 +1573,14 @@ async def test_74_human_node_async_success():
     assert "async approved" in result.messages
 
 @pytest.mark.asyncio
-async def test_75_human_node_with_retry_success():
-    attempts = {"count": 0}
-
-    @node_action
-    async def flaky_handler(state: State) -> State:
-        attempts["count"] += 1
-        if attempts["count"] < 3:
-            raise Exception("Simulated failure")
-        state.messages.append("success after retries")
-        return state
-
-    node = HumanInTheLoopNode(
-        "hitl_retry",
-        flaky_handler,
-        retry_policy=RetryPolicy(max_retries=4, delay=0.01, backoff=1)
-    )
-
-    result = await node.execute(State(messages=[]))
-    assert "success after retries" in result.messages
-    assert attempts["count"] == 3
-
-@pytest.mark.asyncio
-async def test_76_human_node_retries_exhausted():
+async def test_75_human_node_retries_exhausted():
     @node_action
     async def always_fail(state: State) -> State:
         raise Exception("Nope")
 
     node = HumanInTheLoopNode(
         "hitl_fail",
-        always_fail,
-        retry_policy=RetryPolicy(max_retries=2, delay=0.01, backoff=1)
+        always_fail
     )
 
     with pytest.raises(Exception) as excinfo:
