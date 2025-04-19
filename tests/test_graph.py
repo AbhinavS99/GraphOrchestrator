@@ -1600,3 +1600,164 @@ async def test_77_human_node_invalid_return_type():
         await node.execute(State(messages=["X"]))
 
     assert "not a state" in str(excinfo.value)
+
+@pytest.mark.asyncio
+async def test_78_fallback_node_executes_on_failure():
+    call_log = []
+
+    @node_action
+    def fail_node(state: State) -> State:
+        call_log.append("main")
+        raise ValueError("Failure")
+
+    @node_action
+    def fallback_node(state: State) -> State:
+        call_log.append("fallback")
+        state.messages.append("Recovered")
+        return state
+
+    builder = GraphBuilder()
+    builder.add_node(ProcessingNode("main", fail_node))
+    builder.add_node(ProcessingNode("fallback", fallback_node))
+    builder.set_fallback_node("main", "fallback")
+    builder.add_concrete_edge("start", "main")
+    builder.add_concrete_edge("main", "end")
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+    result = await executor.execute()
+    assert "Recovered" in result.messages
+    assert call_log.count("main") == 4  # 1 + 3 retries
+    assert call_log[-1] == "fallback"  # Last call should be fallback
+
+@pytest.mark.asyncio
+async def test_79_no_fallback_failure_raises_error():
+    @node_action
+    def fail_node(state: State) -> State:
+        raise RuntimeError("Intentional")
+
+    builder = GraphBuilder()
+    builder.add_node(ProcessingNode("main", fail_node))
+    builder.add_concrete_edge("start", "main")
+    builder.add_concrete_edge("main", "end")
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+    with pytest.raises(GraphExecutionError) as excinfo:
+        await executor.execute()
+    assert "Intentional" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_80_fallback_failure_raises_proper_error():
+    @node_action
+    def fail_node(state: State) -> State:
+        raise RuntimeError("Primary failed")
+
+    @node_action
+    def fallback_node(state: State) -> State:
+        raise RuntimeError("Fallback also failed")
+
+    builder = GraphBuilder()
+    builder.add_node(ProcessingNode("main", fail_node))
+    builder.add_node(ProcessingNode("fallback", fallback_node))
+    builder.set_fallback_node("main", "fallback")
+    builder.add_concrete_edge("start", "main")
+    builder.add_concrete_edge("main", "end")
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+    with pytest.raises(GraphExecutionError) as excinfo:
+        await executor.execute()
+    assert "Fallback also failed" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_81_fallback_conditional_edge_routing():
+    @node_action
+    def fail_node(state: State) -> State:
+        raise ValueError("Failing deliberately")
+
+    @node_action
+    def fallback_node(state: State) -> State:
+        state.messages.append("Fallback used")
+        return state
+
+    @node_action
+    def sink_node(state: State) -> State:
+        state.messages.append("Sink reached")
+        return state
+
+    @routing_function
+    def router(state: State) -> str:
+        return "sink"
+
+    builder = GraphBuilder()
+    builder.add_node(ProcessingNode("main", fail_node))
+    builder.add_node(ProcessingNode("fallback", fallback_node))
+    builder.add_node(ProcessingNode("sink", sink_node))
+
+    builder.set_fallback_node("main", "fallback")
+    builder.add_concrete_edge("start", "main")
+    builder.add_conditional_edge("main", ["sink"], router)
+    builder.add_concrete_edge("sink", "end")
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+    result = await executor.execute()
+    assert "Fallback used" in result.messages
+    assert "Sink reached" in result.messages
+
+@pytest.mark.asyncio
+async def test_82_circle_graph_with_fallback():
+    counter = {"value" : 0}
+    op = {"node1" : 0, "node2": 0, "fall_node": 0}
+    @node_action
+    def flaky_node(state: State):
+        op["node1"] += 1
+        if counter["value"] == 0:
+            counter["value"] += 1
+            raise ValueError("Failing")
+        else:
+            return state
+
+    @node_action
+    def normal_node(state: State):
+        op["node2"] += 1
+        return state
+
+    @node_action
+    def fallback_node(state: State):
+        op["fall_node"] += 1
+        return state
+
+    @routing_function
+    def router(state: State) -> str:
+        if counter["value"] == 1:
+            counter["value"] += 1
+            return "node1"
+        else:
+            return "end"
+    
+    node1 = ProcessingNode("node1", flaky_node)
+    node2 = ProcessingNode("node2", normal_node)
+    fall_node = ProcessingNode("fall_node", fallback_node)
+    
+    builder = GraphBuilder()
+    builder.add_node(node1)
+    builder.add_node(node2)
+    builder.add_node(fall_node)
+    builder.set_fallback_node("node1", "fall_node")
+    builder.add_concrete_edge("start", "node1")
+    builder.add_concrete_edge("node1", "node2")
+    builder.add_conditional_edge("node2", ["node1", "end"], router)
+
+    graph = builder.build_graph()
+    initial_state = State(messages=[])
+    rp = RetryPolicy(0, 0, 0)
+    executor = GraphExecutor(graph, initial_state, retry_policy=rp)
+    result = await executor.execute()
+
+    assert op["node1"] == 2
+    assert op["node2"] == 2
+    assert op["fall_node"] == 1

@@ -59,35 +59,49 @@ class GraphExecutor:
                         timeout=superstep_timeout
                     )
                 )
-                tasks.append((node_id, task))
+                tasks.append((node_id, task, input_data))  # added input_data for fallback reuse
 
-            for node_id, task in tasks:
+            for node_id, task, original_input in tasks:
+                node = self.graph.nodes[node_id]
                 try:
                     result_state = await task
-                    node = self.graph.nodes[node_id]
                     logging.info(f"[STEP {superstep}] Node '{node_id}' execution complete.")
-
-                    for edge in node.outgoing_edges:
-                        if isinstance(edge, ConcreteEdge):
-                            next_active_states[edge.sink.node_id].append(copy.deepcopy(result_state))
-                            logging.info(f"[STEP {superstep}] {node_id} → {edge.sink.node_id} (via concrete)")
-                        elif isinstance(edge, ConditionalEdge):
-                            chosen_id = await edge.routing_function(result_state)
-                            valid_ids = [sink.node_id for sink in edge.sinks]
-                            if chosen_id not in valid_ids:
-                                raise GraphExecutionError(node_id, f"Invalid routing output: '{chosen_id}'")
-                            next_active_states[chosen_id].append(copy.deepcopy(result_state))
-                            logging.info(f"[STEP {superstep}] {node_id} → {chosen_id} (via conditional router={edge.routing_function.__name__})")
-
-                    if node_id == self.graph.end_node.node_id:
-                        final_state = result_state
-
                 except asyncio.TimeoutError:
                     logging.error(f"[STEP {superstep}] Node '{node_id}' timed out after {superstep_timeout:.1f}s.")
                     raise GraphExecutionError(node_id, f"Execution timed out after {superstep_timeout}s.")
                 except Exception as e:
-                    logging.error(f"[STEP {superstep}] Node '{node_id}' execution failed: {e}")
-                    raise GraphExecutionError(node_id, str(e))
+                    fallback_id = getattr(node, "fallback_node_id", None)
+                    if fallback_id:
+                        fallback_node = self.graph.nodes[fallback_id]
+                        logging.warning(f"graph=executor event=fallback_invoked from={node_id} to={fallback_id} reason={e}")
+                        try:
+                            result_state = await asyncio.wait_for(
+                                self._execute_node_with_retry_async(fallback_node, original_input, self.retry_policy),
+                                timeout=superstep_timeout
+                            )
+                            logging.info(f"graph=executor event=fallback_success node={fallback_id}")
+                        except Exception as fallback_error:
+                            logging.error(f"graph=executor event=fallback_failed node={fallback_id} reason={fallback_error}")
+                            raise GraphExecutionError(fallback_id, f"Fallback node failed: {fallback_error}")
+                    else:
+                        logging.error(f"[STEP {superstep}] Node '{node_id}' execution failed: {e}")
+                        raise GraphExecutionError(node_id, str(e))
+
+                # Use original node's outgoing edges even after fallback
+                for edge in node.outgoing_edges:
+                    if isinstance(edge, ConcreteEdge):
+                        next_active_states[edge.sink.node_id].append(copy.deepcopy(result_state))
+                        logging.info(f"[STEP {superstep}] {node_id} → {edge.sink.node_id} (via concrete)")
+                    elif isinstance(edge, ConditionalEdge):
+                        chosen_id = await edge.routing_function(result_state)
+                        valid_ids = [sink.node_id for sink in edge.sinks]
+                        if chosen_id not in valid_ids:
+                            raise GraphExecutionError(node.node_id, f"Invalid routing output: '{chosen_id}'")
+                        next_active_states[chosen_id].append(copy.deepcopy(result_state))
+                        logging.info(f"[STEP {superstep}] {node_id} → {chosen_id} (via conditional router={edge.routing_function.__name__})")
+
+                if node_id == self.graph.end_node.node_id:
+                    final_state = result_state
 
             self.active_states = next_active_states
             superstep += 1
