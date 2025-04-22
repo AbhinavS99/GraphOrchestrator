@@ -11,7 +11,7 @@
 
 2. **Clone Your Fork Locally**
    ```bash
-   git clone https://github.com/<your-username>/graphorchestrator.git
+   git clone https://github.com/AbhinavS99/graphorchestrator.git
    cd graphorchestrator
    ```
 
