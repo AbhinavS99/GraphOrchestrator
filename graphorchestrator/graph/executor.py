@@ -10,9 +10,10 @@ from graphorchestrator.core.exceptions import GraphExecutionError
 from graphorchestrator.nodes.nodes import AggregatorNode
 from graphorchestrator.edges.concrete import ConcreteEdge
 from graphorchestrator.edges.conditional import ConditionalEdge
+from graphorchestrator.core.checkpoint import CheckpointStore 
 
 class GraphExecutor:
-    def __init__(self, graph, initial_state, max_workers: int = 4, retry_policy: Optional[RetryPolicy] = None):
+    def __init__(self, graph, initial_state, max_workers: int = 4, retry_policy: Optional[RetryPolicy] = None, checkpoint_store: Optional[CheckpointStore] = None):
         logging.info("graph=executor event=init max_workers=%d", max_workers)
         self.graph = graph
         self.initial_state = initial_state
@@ -21,6 +22,7 @@ class GraphExecutor:
         self.active_states[graph.start_node.node_id].append(initial_state)
         self.retry_policy = retry_policy if retry_policy else RetryPolicy()
         self.semaphore = asyncio.Semaphore(self.max_workers)
+        self.checkpoint_store = checkpoint_store
 
     async def _execute_node_with_retry_async(self, node, input_data, retry_policy):
         attempt = 0
@@ -38,11 +40,21 @@ class GraphExecutor:
                     await asyncio.sleep(delay)
                     delay *= retry_policy.backoff
                     attempt += 1
-
     async def execute(self, max_supersteps: int = 100, superstep_timeout: float = 300.0) -> Optional[State]:
         logging.info("🚀 Graph execution started.")
         superstep = 0
         final_state = None
+
+        # Load from checkpoint if available
+        if self.checkpoint_store:
+            checkpoint = self.checkpoint_store.load_checkpoint()
+            if checkpoint:
+                superstep, self.active_states = checkpoint
+                logging.info(f"⏪ Resuming from checkpoint at step {superstep}")
+            else:
+                self.active_states = {self.graph.start_node.node_id: [self.initial_state]}
+        else:
+            self.active_states = {self.graph.start_node.node_id: [self.initial_state]}
 
         while self.active_states and superstep < max_supersteps:
             logging.info(f"[STEP {superstep}] Nodes to execute: {list(self.active_states.keys())}")
@@ -59,7 +71,7 @@ class GraphExecutor:
                         timeout=superstep_timeout
                     )
                 )
-                tasks.append((node_id, task, input_data))  # added input_data for fallback reuse
+                tasks.append((node_id, task, input_data))
 
             for node_id, task, original_input in tasks:
                 node = self.graph.nodes[node_id]
@@ -87,7 +99,6 @@ class GraphExecutor:
                         logging.error(f"[STEP {superstep}] Node '{node_id}' execution failed: {e}")
                         raise GraphExecutionError(node_id, str(e))
 
-                # Use original node's outgoing edges even after fallback
                 for edge in node.outgoing_edges:
                     if isinstance(edge, ConcreteEdge):
                         next_active_states[edge.sink.node_id].append(copy.deepcopy(result_state))
@@ -102,6 +113,10 @@ class GraphExecutor:
 
                 if node_id == self.graph.end_node.node_id:
                     final_state = result_state
+
+            # 🔐 Save checkpoint before advancing to next step
+            if self.checkpoint_store:
+                self.checkpoint_store.save_checkpoint(superstep, next_active_states)
 
             self.active_states = next_active_states
             superstep += 1
