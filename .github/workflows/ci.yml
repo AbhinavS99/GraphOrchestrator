@@ -46,9 +46,19 @@ jobs:
 
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "🔵 Detected formatting changes. Committing..."
+
             git add .
             git commit -m "🤖 Auto-format code with Black"
-            git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.head_ref }}
+
+            echo "🔵 Fetching branch to attach HEAD"
+            git fetch origin ${{ github.head_ref }}
+            git checkout ${{ github.head_ref }}
+
+            echo "🔵 Setting remote to use PAT"
+            git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
+
+            echo "🔵 Pushing changes"
+            git push origin ${{ github.head_ref }}
           else
             echo "✅ No formatting changes detected. No commit necessary."
           fi
