@@ -23,6 +23,21 @@ jobs:
           pip install -r requirements.txt
           pip install coverage codecov pytest pytest-asyncio
 
+      - name: Patch graphorchestrator/core/state.py
+        run: |
+          echo 'print("hello world")' >> graphorchestrator/core/state.py
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and Push Patched File
+        run: |
+          git add graphorchestrator/core/state.py
+          git commit -m "Patch: Add hello world print to state.py"
+          git push origin HEAD:${{ github.head_ref }}
+
       - name: Run tests with coverage
         run: |
           coverage run -m pytest
