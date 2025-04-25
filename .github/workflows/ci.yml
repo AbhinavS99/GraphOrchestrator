@@ -57,11 +57,15 @@ jobs:
             git fetch origin ${{ github.head_ref }}
             git checkout ${{ github.head_ref }}
 
+            echo "🔵 Unsetting default GitHub credentials"
+            git config --global --unset credential.helper
+
             echo "🔵 Pushing changes directly using PAT-authenticated URL"
             git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.head_ref }}
           else
             echo "✅ No formatting changes detected. No commit necessary."
           fi
+
 
       - name: Run static type checks (mypy)
         run: |
