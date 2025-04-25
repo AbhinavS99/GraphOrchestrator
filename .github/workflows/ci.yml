@@ -1,33 +1,61 @@
-name: CI
+name: GraphOrchestrator | Code Quality Validation
 
 on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 jobs:
-  test:
+  validate-code:
+    name: Validate Formatting, Typing, and Tests
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage codecov pytest pytest-asyncio
+          pip install black coverage codecov pytest pytest-asyncio pre-commit mypy
+
+      - name: Run Black (Autoformat Python code)
+        run: |
+          black graphorchestrator tests
+
+      - name: Auto-commit formatted code if needed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🤖 Auto-format code with Black"
+          branch: ${{ github.head_ref }}
+
+      - name: Run static type checks (mypy)
+        run: |
+          mypy graphorchestrator tests
 
       - name: Run tests with coverage
         run: |
           coverage run -m pytest
           coverage report --fail-under=85
-          coverage xml  # Generate XML for Codecov
+          coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
