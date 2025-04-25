@@ -40,6 +40,10 @@ jobs:
       - name: Run Black (Autoformat Python code)
         run: |
           black graphorchestrator tests
+      
+      - name: Configure git to use PAT for pushing
+        run: |
+          git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
 
       - name: Auto-commit formatted code if needed
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -48,9 +52,7 @@ jobs:
           branch: ${{ github.head_ref }}
           commit_user_name: github-actions[bot]
           commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
-          repository: https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
           push_options: '--force'
-
 
       - name: Run static type checks (mypy)
         run: |
