@@ -17,6 +17,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure git to use PAT immediately
+        run: |
+          git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -50,14 +54,11 @@ jobs:
             git add .
             git commit -m "🤖 Auto-format code with Black"
 
-            echo "🔵 Fetching branch to attach HEAD"
+            echo "🔵 Fetching branch to attach HEAD properly"
             git fetch origin ${{ github.head_ref }}
             git checkout ${{ github.head_ref }}
 
-            echo "🔵 Setting remote to use PAT"
-            git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
-
-            echo "🔵 Pushing changes"
+            echo "🔵 Pushing changes using PAT-authenticated remote"
             git push origin ${{ github.head_ref }}
           else
             echo "✅ No formatting changes detected. No commit necessary."
