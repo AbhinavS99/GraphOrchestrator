@@ -6,10 +6,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'graphorchestrator/**'
-      - 'tests/**'
-      - '.github/**'
 
 jobs:
   security-audit:
