@@ -46,6 +46,11 @@ jobs:
         with:
           commit_message: "🤖 Auto-format code with Black"
           branch: ${{ github.head_ref }}
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          push_options: '--force'
+        env:
+          GIT_AUTH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: Run static type checks (mypy)
         run: |
