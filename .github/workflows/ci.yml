@@ -48,9 +48,9 @@ jobs:
           branch: ${{ github.head_ref }}
           commit_user_name: github-actions[bot]
           commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          repository: https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
           push_options: '--force'
-        env:
-          GIT_AUTH_TOKEN: ${{ secrets.PAT_TOKEN }}
+
 
       - name: Run static type checks (mypy)
         run: |
