@@ -6,7 +6,39 @@ on:
       - main
 
 jobs:
-  test:
+  # static-analysis:
+  #   name: Static Analysis (mypy)
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.12'
+
+  #     - name: Cache pip dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~/.cache/pip
+  #         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pip-
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
+  #         pip install mypy
+
+  #     - name: Run mypy type checks
+  #       run: |
+  #         mypy --explicit-package-bases graphorchestrator
+
+  run-tests:
+    name: Run Unit Tests
+    # needs: static-analysis  # <-- This makes sure it runs *after* static-analysis
     runs-on: ubuntu-latest
 
     steps:
@@ -16,6 +48,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -27,7 +67,7 @@ jobs:
         run: |
           coverage run -m pytest
           coverage report --fail-under=85
-          coverage xml  # Generate XML for Codecov
+          coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -37,3 +77,36 @@ jobs:
           flags: pytest
           name: python-coverage
           fail_ci_if_error: true
+
+  audit-dependencies:
+    name: Dependency & Vulnerability Audit (pip-audit)
+    needs: run-tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pypa/gh-action-pip-audit@v1.1.0
+      with:
+        inputs: requirements.txt
+
+  scan-code-security:
+    name: Source Code Security Scan (bandit)
+    needs: audit-dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Bandit
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit
+
+      - name: Run Bandit on graphorchestrator/
+        run: |
+          bandit -r graphorchestrator -ll --skip B101,B301
