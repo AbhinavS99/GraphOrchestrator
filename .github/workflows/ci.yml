@@ -12,6 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create temp.txt
+        run: |
+          echo "Temporary file created on $(date)" > temp.txt
+          git add temp.txt
+          git commit -m "Add temp.txt before tests" || echo "No changes to commit"
+
+      - name: Push temp.txt
+        run: |
+          git push origin HEAD:${{ github.head_ref }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
