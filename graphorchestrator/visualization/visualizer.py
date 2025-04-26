@@ -2,7 +2,11 @@ from collections import defaultdict, deque
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, Circle
 
-from graphorchestrator.visualization.representation import RepresentationalGraph, RepresentationalEdgeType
+from graphorchestrator.visualization.representation import (
+    RepresentationalGraph,
+    RepresentationalEdgeType,
+)
+
 
 class GraphVisualizer:
     def __init__(self, rep_graph: RepresentationalGraph):
@@ -13,7 +17,7 @@ class GraphVisualizer:
         start_id = "start"
         if start_id not in self.rep_graph.nodes:
             raise ValueError("No 'start' node found in the representational graph.")
-        
+
         queue = deque([(start_id, 0)])
         visited = set()
 
@@ -71,7 +75,7 @@ class GraphVisualizer:
             arrow = FancyArrowPatch(
                 start_pos,
                 end_pos,
-                arrowstyle='-|>',
+                arrowstyle="-|>",
                 mutation_scale=15,
                 color=color,
                 linewidth=2,
@@ -79,12 +83,12 @@ class GraphVisualizer:
                 connectionstyle=connection_style,
                 shrinkA=15,
                 shrinkB=15,
-                zorder=1
+                zorder=1,
             )
             ax.add_patch(arrow)
 
         ax.autoscale()
-        ax.axis('off')
+        ax.axis("off")
         plt.tight_layout()
         if show:
             plt.show()

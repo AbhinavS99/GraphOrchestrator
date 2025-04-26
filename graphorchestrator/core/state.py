@@ -1,14 +1,16 @@
 from dataclasses import dataclass, field
 from typing import Any, List
 
+
 @dataclass
-class State: 
+class State:
     """
     Represents the state of a process or workflow, maintaining a list of messages.
 
     Attributes:
         messages (List[Any]): A list to store messages related to the state.
     """
+
     messages: List[Any] = field(default_factory=list)
 
     def __repr__(self) -> str:

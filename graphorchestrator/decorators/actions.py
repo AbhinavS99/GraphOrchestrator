@@ -8,7 +8,7 @@ from graphorchestrator.core.exceptions import (
     InvalidRoutingFunctionOutput,
     InvalidNodeActionOutput,
     InvalidToolMethodOutput,
-    InvalidAggregatorActionError
+    InvalidAggregatorActionError,
 )
 
 
@@ -28,14 +28,19 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
         A decorated function that performs the routing logic and type checking.
 
     """
+
     @wraps(func)
     async def wrapper(state: State) -> str:
         show_state = getattr(func, "show_state", False)
         state_log = str(state) if show_state else f"<messages={len(state.messages)}>"
-        logging.debug(f"Routing function '{func.__name__}' called with state={state_log}")
+        logging.debug(
+            f"Routing function '{func.__name__}' called with state={state_log}"
+        )
         result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, str):
-            logging.error(f"Routing function '{func.__name__}' returned non-str: {result}")
+            logging.error(
+                f"Routing function '{func.__name__}' returned non-str: {result}"
+            )
             raise InvalidRoutingFunctionOutput(result)
         return result
 
@@ -92,6 +97,7 @@ def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
         A decorated function that performs the tool method logic and type checking.
 
     """
+
     @wraps(func)
     async def wrapper(state: State) -> State:
         show_state = getattr(func, "show_state", False)
@@ -108,7 +114,9 @@ def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
     return wrapper
 
 
-def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[State]], State]:
+def aggregator_action(
+    func: Callable[[List[State]], State],
+) -> Callable[[List[State]], State]:
     """
     Decorator to mark a function as an aggregator action.
 
@@ -126,14 +134,21 @@ def aggregator_action(func: Callable[[List[State]], State]) -> Callable[[List[St
         type checking.
 
     """
+
     @wraps(func)
     async def wrapper(states: List[State]) -> State:
         show_state = getattr(func, "show_state", False)
         state_log = str(states) if show_state else f"<batch_count={len(states)}>"
-        logging.debug(f"Aggregator action '{func.__name__}' called with states={state_log}")
-        result = await func(states) if asyncio.iscoroutinefunction(func) else func(states)
+        logging.debug(
+            f"Aggregator action '{func.__name__}' called with states={state_log}"
+        )
+        result = (
+            await func(states) if asyncio.iscoroutinefunction(func) else func(states)
+        )
         if not isinstance(result, State):
-            logging.error(f"Aggregator action '{func.__name__}' returned non-State: {result}")
+            logging.error(
+                f"Aggregator action '{func.__name__}' returned non-State: {result}"
+            )
             raise InvalidAggregatorActionError(result)
         return result
 

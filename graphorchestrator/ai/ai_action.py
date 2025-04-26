@@ -27,7 +27,6 @@ class AIActionBase(ABC):
         self.is_node_action = True
         self.__name__ = self.__class__.__name__
 
-
     @abstractmethod
     def build_model(self):
         """
@@ -35,7 +34,7 @@ class AIActionBase(ABC):
         Subclasses must set:
             self.model = <constructed model>
             self._model_built = True.
-        
+
         Raises:
             NotImplementedError: If the method is not implemented in a subclass.
         """
@@ -73,7 +72,11 @@ class AIActionBase(ABC):
             self.build_model()
 
         result_or_coro = self.process_state(state)
-        result = await result_or_coro if isinstance(result_or_coro, abc.Awaitable) else result_or_coro
+        result = (
+            await result_or_coro
+            if isinstance(result_or_coro, abc.Awaitable)
+            else result_or_coro
+        )
 
         if not isinstance(result, State):
             raise InvalidAIActionOutput(result)

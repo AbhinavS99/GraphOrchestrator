@@ -14,6 +14,7 @@ class RetryPolicy:
     Example:
         policy = RetryPolicy(max_retries=5, delay=0.5, backoff=1.5)
     """
+
     max_retries: int = 3
     delay: float = 1.0
     backoff: float = 2.0

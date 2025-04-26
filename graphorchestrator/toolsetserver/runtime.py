@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field
 from graphorchestrator.core.state import State
 from graphorchestrator.decorators.actions import tool_method
 
+
 # Pydantic model to parse incoming JSON
 class StateModel(BaseModel):
     messages: List[Any] = Field(default_factory=list)
+
 
 # Metaclass that registers FastAPI endpoints
 class _ToolSetMeta(type):
@@ -21,10 +23,15 @@ class _ToolSetMeta(type):
 
         # Auth dependency (optional)
         if getattr(cls, "require_auth", False):
-            async def _check(auth: str | None = Header(default=None, alias="Authorization")):
+
+            async def _check(
+                auth: str | None = Header(default=None, alias="Authorization")
+            ):
                 if not auth or not cls.authenticate(auth):
                     raise HTTPException(status_code=401, detail="Unauthorized")
+
         else:
+
             async def _check():
                 return None
 
@@ -39,11 +46,14 @@ class _ToolSetMeta(type):
                     raise
                 except Exception as e:
                     # return exception message on 500
-                    return Response(content=str(e), status_code=500, media_type="text/plain")
+                    return Response(
+                        content=str(e), status_code=500, media_type="text/plain"
+                    )
                 return Response(
                     content=json.dumps({"messages": result.messages}),
-                    media_type="application/json"
+                    media_type="application/json",
                 )
+
             return endpoint
 
         # Scan for tools (including inherited)
@@ -54,11 +64,13 @@ class _ToolSetMeta(type):
             if callable(attr_val) and getattr(attr_val, "is_tool_method", False):
                 route_path = f"/tools/{attr_name}"
                 cls._fastapi.post(route_path)(make_endpoint(attr_val))
-                cls._tool_index.append({
-                    "name": attr_name,
-                    "path": route_path,
-                    "doc": (attr_val.__doc__ or "").strip()
-                })
+                cls._tool_index.append(
+                    {
+                        "name": attr_name,
+                        "path": route_path,
+                        "doc": (attr_val.__doc__ or "").strip(),
+                    }
+                )
 
         # Tool catalog
         @cls._fastapi.get("/tools")
@@ -66,6 +78,7 @@ class _ToolSetMeta(type):
             return cls._tool_index
 
         return cls
+
 
 # Base class to be subclassed by users
 class ToolSetServer(metaclass=_ToolSetMeta):
@@ -85,7 +98,7 @@ class ToolSetServer(metaclass=_ToolSetMeta):
             host=uvicorn_kwargs.pop("host", cls.host),
             port=uvicorn_kwargs.pop("port", cls.port),
             log_level=uvicorn_kwargs.pop("log_level", "info"),
-            **uvicorn_kwargs
+            **uvicorn_kwargs,
         )
 
     @classmethod
@@ -95,9 +108,10 @@ class ToolSetServer(metaclass=_ToolSetMeta):
             host=uvicorn_kwargs.pop("host", cls.host),
             port=uvicorn_kwargs.pop("port", cls.port),
             log_level=uvicorn_kwargs.pop("log_level", "info"),
-            **uvicorn_kwargs
+            **uvicorn_kwargs,
         )
         server = uvicorn.Server(config)
         await server.serve()
+
 
 __all__ = ["ToolSetServer"]

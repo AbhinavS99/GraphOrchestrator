@@ -4,9 +4,18 @@ from graphorchestrator.core.state import State
 from graphorchestrator.graph.graph import Graph
 from graphorchestrator.core.retry import RetryPolicy
 
+
 class CheckpointData:
-    def __init__(self, graph: Graph, initial_state: State, active_states: Dict[str, List[State]],
-                 superstep: int, final_state: Optional[State], retry_policy: RetryPolicy, max_workers: int):
+    def __init__(
+        self,
+        graph: Graph,
+        initial_state: State,
+        active_states: Dict[str, List[State]],
+        superstep: int,
+        final_state: Optional[State],
+        retry_policy: RetryPolicy,
+        max_workers: int,
+    ):
         self.graph = graph
         self.initial_state = initial_state
         self.active_states = active_states
