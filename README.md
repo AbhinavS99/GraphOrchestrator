@@ -7,7 +7,7 @@
 [![CI](https://github.com/AbhinavS99/GraphOrchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhinavS99/GraphOrchestrator/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/AbhinavS99/GraphOrchestrator/graph/badge.svg?token=U69VNUUQ6I)](https://codecov.io/gh/AbhinavS99/GraphOrchestrator)
 [![PyPI version](https://badge.fury.io/py/graph-orchestrator.svg)](https://badge.fury.io/py/graph-orchestrator)
-[![License](https://img.shields.io/github/license/AbhinavS99/GraphOrchestrator)](https://github.com/AbhinavS99/GraphOrchestrator/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/AbhinavS99/GraphOrchestrator/blob/main/LICENSE)
 
 **GraphOrchestrator** is a powerful yet lightweight Python library designed to help you build and execute complex, dynamic workflows as directed graphs. Think of it as your toolkit for crafting intricate decision engines, agent workflows, or even robust data pipelines, all with the elegance of graph-based execution.
 
