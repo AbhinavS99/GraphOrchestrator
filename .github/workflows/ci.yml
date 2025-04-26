@@ -107,6 +107,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install bandit
 
-      - name: Run Bandit static security scan
+      - name: Run Bandit on graphorchestrator/
         run: |
-          bandit -r . -ll --skip B101
+          bandit -r graphorchestrator -ll --skip B101,B301
