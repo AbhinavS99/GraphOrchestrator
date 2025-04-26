@@ -6,33 +6,56 @@ on:
       - main
 
 jobs:
-  test:
+  static-analysis:
+    name: Static Analysis (mypy)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Git user
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Create temp.txt
-        run: |
-          echo "Temporary file created on $(date)" > temp.txt
-          git add temp.txt
-          git commit -m "Add temp.txt before tests" || echo "No changes to commit"
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Pull remote changes and push temp.txt
+      - name: Install dependencies
         run: |
-          git fetch origin ${{ github.head_ref }}
-          git rebase origin/${{ github.head_ref }} || echo "Already up to date or rebase not needed"
-          git push origin HEAD:${{ github.head_ref }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mypy
+
+      - name: Run mypy type checks
+        run: |
+          mypy .
+
+  run-tests:
+    name: Run Unit Tests
+    needs: static-analysis  # <-- This makes sure it runs *after* static-analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -44,7 +67,7 @@ jobs:
         run: |
           coverage run -m pytest
           coverage report --fail-under=85
-          coverage xml  # Generate XML for Codecov
+          coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -54,3 +77,59 @@ jobs:
           flags: pytest
           name: python-coverage
           fail_ci_if_error: true
+
+  audit-dependencies:
+    name: Dependency & Vulnerability Audit (pip-audit)
+    needs: run-tests  # <-- Runs only after tests finish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install pip-audit
+        run: |
+          pip install pip-audit
+
+      - name: Run pip-audit and fail if vulnerabilities exist
+        run: |
+          pip-audit --fail-on-vuln
+
+  scan-code-security:
+    name: Source Code Security Scan (bandit)
+    needs: audit-dependencies  # <-- Runs only after audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Bandit
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit
+
+      - name: Run Bandit static security scan
+        run: |
+          bandit -r . -ll --skip B101
