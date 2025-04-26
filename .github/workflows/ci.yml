@@ -23,8 +23,10 @@ jobs:
           git add temp.txt
           git commit -m "Add temp.txt before tests" || echo "No changes to commit"
 
-      - name: Push temp.txt
+      - name: Pull remote changes and push temp.txt
         run: |
+          git fetch origin ${{ github.head_ref }}
+          git rebase origin/${{ github.head_ref }} || echo "Already up to date or rebase not needed"
           git push origin HEAD:${{ github.head_ref }}
 
       - name: Set up Python
