@@ -2,6 +2,7 @@ import logging
 from graphorchestrator.nodes.base import Node
 from graphorchestrator.edges.base import Edge
 
+
 class ConcreteEdge(Edge):
     """
     Concrete implementation of an edge in a graph.
@@ -13,6 +14,7 @@ class ConcreteEdge(Edge):
         source (Node): The source node of the edge.
         sink (Node): The sink node of the edge.
     """
+
     def __init__(self, source: Node, sink: Node) -> None:
         self.source = source
         self.sink = sink

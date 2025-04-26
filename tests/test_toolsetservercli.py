@@ -30,13 +30,18 @@ def test_run_command_invokes_serve(monkeypatch):
     monkeypatch.setattr(DummyRunServer, "serve", classmethod(fake_serve))
 
     module_path = __name__
-    result = runner.invoke(cli, [
-        "run",
-        f"{module_path}:DummyRunServer",
-        "--host", "0.0.0.0",
-        "--port", "4242",
-        "--reload"
-    ])
+    result = runner.invoke(
+        cli,
+        [
+            "run",
+            f"{module_path}:DummyRunServer",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "4242",
+            "--reload",
+        ],
+    )
 
     assert result.exit_code == 0
     assert called["cls"] is DummyRunServer
@@ -61,14 +66,19 @@ def test_invalid_server_format():
     assert result.exit_code != 0
     assert "Specify server as 'module:ClassName'" in result.output
 
+
 def test_import_nonexistent_class():
     runner = CliRunner()
-    result = runner.invoke(cli, ["run", "graphorchestrator.toolsetserver.runtime:NonExistentClass"])
+    result = runner.invoke(
+        cli, ["run", "graphorchestrator.toolsetserver.runtime:NonExistentClass"]
+    )
     assert result.exit_code != 0
     assert "Cannot import" in result.output
 
+
 class NotAServer:
     pass
+
 
 def test_import_wrong_type(monkeypatch):
     module_name = __name__
@@ -79,6 +89,7 @@ def test_import_wrong_type(monkeypatch):
     result = runner.invoke(cli, ["run", f"{module_name}:NotAServer"])
     assert result.exit_code != 0
     assert "is not a ToolSetServer subclass" in result.output
+
 
 def test_cli_help():
     runner = CliRunner()

@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
+
 class Node(ABC):
     """
     Abstract base class representing a node in a graph.
@@ -19,8 +20,8 @@ class Node(ABC):
         self.node_id: str = node_id
         self.incoming_edges = []
         self.outgoing_edges = []
-        self.fallback_node_id: Optional[str] = None 
-        
+        self.fallback_node_id: Optional[str] = None
+
         # Log the initialization of the node
         logging.info(
             f"node=base event=init node_id={self.node_id} incoming=0 outgoing=0"

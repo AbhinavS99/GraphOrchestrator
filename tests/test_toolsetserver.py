@@ -13,6 +13,7 @@ from graphorchestrator.core.retry import RetryPolicy
 from graphorchestrator.graph.builder import GraphBuilder
 from graphorchestrator.graph.executor import GraphExecutor
 
+
 # ────────────────────────────────
 # OPEN server (no auth required)
 # ────────────────────────────────
@@ -20,9 +21,10 @@ class OpenTools(ToolSetServer):
     host, port = "127.0.0.1", 9100
 
     @tool_method
-    def ping( state: State) -> State:
+    def ping(state: State) -> State:
         state.messages.append("pong")
         return state
+
 
 # ────────────────────────────────
 # SECURE server (auth required)
@@ -40,6 +42,7 @@ class SecureTools(ToolSetServer):
     async def hello(state: State) -> State:
         state.messages.append("hi")
         return state
+
 
 # ────────────────────────────────
 # Async Uvicorn context wrapper
@@ -82,9 +85,12 @@ async def test_01_open_server_tool_and_catalog():
             assert any(tool["name"] == "ping" for tool in cat.json())
 
             # Tool call
-            res = await client.post("http://127.0.0.1:9100/tools/ping", json={"messages": []})
+            res = await client.post(
+                "http://127.0.0.1:9100/tools/ping", json={"messages": []}
+            )
             assert res.status_code == 200
             assert res.json() == {"messages": ["pong"]}
+
 
 # ────────────────────────────────
 # TEST: Auth-required server
@@ -100,9 +106,12 @@ async def test_02_secure_server_authorized_and_unauthorized():
             assert r1.status_code == 401
 
             # Authorized
-            r2 = await client.post(url, headers={"Authorization": "secret-123"}, json={"messages": []})
+            r2 = await client.post(
+                url, headers={"Authorization": "secret-123"}, json={"messages": []}
+            )
             assert r2.status_code == 200
             assert r2.json() == {"messages": ["hi"]}
+
 
 # 1. 404 for missing tool
 class MissingTools(ToolSetServer):
@@ -113,12 +122,16 @@ class MissingTools(ToolSetServer):
         state.messages.append("foo")
         return state
 
+
 @pytest.mark.asyncio
 async def test_03_404_tool_not_found():
     async with _spawn_server(MissingTools):
         async with httpx.AsyncClient() as client:
-            r = await client.post("http://127.0.0.1:9120/tools/not_exists", json={"messages": []})
+            r = await client.post(
+                "http://127.0.0.1:9120/tools/not_exists", json={"messages": []}
+            )
             assert r.status_code == 404
+
 
 # 2. 422 for malformed JSON
 @pytest.mark.asyncio
@@ -129,6 +142,7 @@ async def test_04_malformed_json():
             r = await client.post("http://127.0.0.1:9120/tools/foo", content="not json")
             assert r.status_code == 422
 
+
 # 3. Tool returns non-State -> 500
 class BadReturnTools(ToolSetServer):
     host, port = "127.0.0.1", 9121
@@ -137,13 +151,17 @@ class BadReturnTools(ToolSetServer):
     def bad(state: State) -> State:
         return 123  # wrong type
 
+
 @pytest.mark.asyncio
 async def test_05_tool_returns_non_state():
     async with _spawn_server(BadReturnTools):
         async with httpx.AsyncClient() as client:
-            r = await client.post("http://127.0.0.1:9121/tools/bad", json={"messages": []})
+            r = await client.post(
+                "http://127.0.0.1:9121/tools/bad", json={"messages": []}
+            )
             assert r.status_code == 500
             assert "Tool method must return a state" in r.text
+
 
 # 4. Catalog includes correct docstrings
 class DocTools(ToolSetServer):
@@ -161,6 +179,7 @@ class DocTools(ToolSetServer):
         state.messages.append("asyncged")
         return state
 
+
 @pytest.mark.asyncio
 async def test_06_catalog_docs_and_paths():
     async with _spawn_server(DocTools):
@@ -172,6 +191,7 @@ async def test_06_catalog_docs_and_paths():
             assert tools["doc_tool"]["path"] == "/tools/doc_tool"
             assert tools["async_doc"]["doc"] == "Async docstring here."
 
+
 # 5. Concurrent requests
 @pytest.mark.asyncio
 async def test_07_concurrent_requests():
@@ -180,8 +200,11 @@ async def test_07_concurrent_requests():
 
     async with _spawn_server(ConcurTools):
         async with httpx.AsyncClient() as client:
+
             async def call_ping():
-                r = await client.post("http://127.0.0.1:9123/tools/ping", json={"messages": []})
+                r = await client.post(
+                    "http://127.0.0.1:9123/tools/ping", json={"messages": []}
+                )
                 assert r.status_code == 200
                 assert r.json() == {"messages": ["pong"]}
 
@@ -196,25 +219,29 @@ async def test_08_toolsetnode_basic_invocation(monkeypatch):
         def __init__(self, data):
             self._data = data
             self.status_code = 200
+
         def raise_for_status(self):
             pass
+
         def json(self):
             return self._data
 
     class DummyClient:
         def __init__(self, *args, **kwargs):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, exc_type, exc, tb):
             pass
+
         async def post(self, url, json, timeout):
             # echo back existing messages + "pong"
             return DummyResponse({"messages": json["messages"] + ["pong"]})
 
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.ToolSetNode.httpx.AsyncClient",
-        DummyClient
+        "graphorchestrator.nodes.nodes.ToolSetNode.httpx.AsyncClient", DummyClient
     )
 
     node = ToolSetNode(node_id="t1", base_url="http://fake", tool_name="ping")
@@ -229,16 +256,18 @@ async def test_09_toolsetnode_retries_exhausted_raises(monkeypatch):
     class DummyClient:
         def __init__(self, *args, **kwargs):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, exc_type, exc, tb):
             pass
+
         async def post(self, url, json, timeout):
             raise httpx.RequestError("permanent failure")
 
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.ToolSetNode.httpx.AsyncClient",
-        DummyClient
+        "graphorchestrator.nodes.nodes.ToolSetNode.httpx.AsyncClient", DummyClient
     )
 
     node = ToolSetNode("t3", "http://fake", "pong")
@@ -261,12 +290,19 @@ class DummyResponse:
     def json(self):
         return self._data
 
+
 class DummyClientBase:
     """Base AsyncClient stub; override post() in subclasses."""
+
     def __init__(self, *args, **kwargs):
         pass
-    async def __aenter__(self): return self
-    async def __aexit__(self, exc_type, exc, tb): pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1) Basic invocation: ToolSetNode should append "pong"
@@ -280,9 +316,7 @@ async def test_10_toolsetnode_basic_invocation(monkeypatch):
 
     # Monkeypatch the AsyncClient used by ToolSetNode
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.httpx.AsyncClient",
-        DummyClient,
-        raising=True
+        "graphorchestrator.nodes.nodes.httpx.AsyncClient", DummyClient, raising=True
     )
 
     node = ToolSetNode(
@@ -300,6 +334,7 @@ async def test_10_toolsetnode_basic_invocation(monkeypatch):
     out_state = await node.execute(in_state)
     assert out_state.messages == ["hello", "pong"]
 
+
 @pytest.mark.asyncio
 async def test_11_toolsetnode_raises(monkeypatch):
     class DummyClient(DummyClientBase):
@@ -307,9 +342,7 @@ async def test_11_toolsetnode_raises(monkeypatch):
             raise Exception("permanent failure")
 
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.httpx.AsyncClient",
-        DummyClient,
-        raising=True
+        "graphorchestrator.nodes.nodes.httpx.AsyncClient", DummyClient, raising=True
     )
 
     node = ToolSetNode("n", "http://x", "foo")
@@ -317,6 +350,7 @@ async def test_11_toolsetnode_raises(monkeypatch):
     with pytest.raises(Exception) as exc:
         await node.execute(State(messages=[]))
     assert "permanent failure" in str(exc.value)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 4) Integration: use ToolSetNode inside a GraphExecutor
@@ -329,9 +363,7 @@ async def test_12_toolsetnode_integration_with_graphexecutor(monkeypatch):
             return DummyResponse({"messages": json["messages"] + ["pong"]})
 
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.httpx.AsyncClient",
-        DummyClient,
-        raising=True
+        "graphorchestrator.nodes.nodes.httpx.AsyncClient", DummyClient, raising=True
     )
 
     builder = GraphBuilder()
@@ -345,6 +377,7 @@ async def test_12_toolsetnode_integration_with_graphexecutor(monkeypatch):
     final = await executor.execute()
     assert final.messages == ["A", "pong"]
 
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 5) Concurrency: many ToolSetNode calls in parallel still work
 # ──────────────────────────────────────────────────────────────────────────────
@@ -357,12 +390,11 @@ async def test_13_toolsetnode_concurrent_execution(monkeypatch):
             return DummyResponse({"messages": json["messages"] + ["X"]})
 
     monkeypatch.setattr(
-        "graphorchestrator.nodes.nodes.httpx.AsyncClient",
-        DummyClient,
-        raising=True
+        "graphorchestrator.nodes.nodes.httpx.AsyncClient", DummyClient, raising=True
     )
 
     node = ToolSetNode("n", "http://svc", "foo")
+
     async def call():
         out = await node.execute(State(messages=["p"]))
         assert out.messages == ["p", "X"]
