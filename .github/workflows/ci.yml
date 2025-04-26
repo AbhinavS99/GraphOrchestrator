@@ -79,11 +79,16 @@ jobs:
           fail_ci_if_error: true
 
   audit-dependencies:
+    name: Dependency & Vulnerability Audit (pip-audit)
+    needs: run-tests
+    runs-on: ubuntu-latest
+    
     steps:
-      - uses: pypa/gh-action-pip-audit@v1.0.0
-        with:
-          inputs: requirements.txt
-          
+    - uses: actions/checkout@v4
+    - uses: pypa/gh-action-pip-audit@v1.1.0
+      with:
+        inputs: requirements.txt
+
   scan-code-security:
     name: Source Code Security Scan (bandit)
     needs: audit-dependencies
