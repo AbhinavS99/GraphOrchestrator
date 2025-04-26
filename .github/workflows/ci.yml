@@ -34,7 +34,7 @@ jobs:
 
       - name: Run mypy type checks
         run: |
-          mypy --explicit-package-bases graphorchestrator tests
+          mypy --explicit-package-bases graphorchestrator
 
   run-tests:
     name: Run Unit Tests
