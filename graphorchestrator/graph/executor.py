@@ -22,7 +22,7 @@ class GraphExecutor:
         retry_policy: Optional[RetryPolicy] = None,
         checkpoint_path: Optional[str] = None,
         checkpoint_every: Optional[int] = None,
-    ):
+    ) -> None:
         logging.info("graph=executor event=init max_workers=%d", max_workers)
         self.graph = graph
         self.initial_state = initial_state
@@ -67,7 +67,12 @@ class GraphExecutor:
         executor.final_state = chkpt.final_state
         return executor
 
-    async def _execute_node_with_retry_async(self, node, input_data, retry_policy):
+    async def _execute_node_with_retry_async(
+        self, node, input_data, retry_policy
+    ) -> None:
+        retry_policy = (
+            node.retry_policy if node.retry_policy is not None else retry_policy
+        )
         attempt = 0
         delay = retry_policy.delay
         while attempt <= retry_policy.max_retries:
@@ -117,9 +122,7 @@ class GraphExecutor:
                         timeout=superstep_timeout,
                     )
                 )
-                tasks.append(
-                    (node_id, task, input_data)
-                )  # added input_data for fallback reuse
+                tasks.append((node_id, task, input_data))
 
             for node_id, task, original_input in tasks:
                 node = self.graph.nodes[node_id]
