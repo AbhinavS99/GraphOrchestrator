@@ -22,6 +22,7 @@ class GraphExecutor:
         retry_policy: Optional[RetryPolicy] = None,
         checkpoint_path: Optional[str] = None,
         checkpoint_every: Optional[int] = None,
+        allow_fallback_from_checkpoint: bool = False,
     ) -> None:
         logging.info("graph=executor event=init max_workers=%d", max_workers)
         self.graph = graph
@@ -35,6 +36,13 @@ class GraphExecutor:
         self.checkpoint_every = checkpoint_every
         self.superstep = 0
         self.final_state = None
+        self.allow_fallback_from_checkpoint = allow_fallback_from_checkpoint
+        self.already_retried_from_checkpoint = False
+        if self.allow_fallback_from_checkpoint and not self.checkpoint_path:
+            raise GraphExecutionError(
+                node_id="GraphExecutor",
+                message="Fallback from checkpoint is enabled, but no checkpoint_path is provided.",
+            )
 
     def to_checkpoint(self) -> CheckpointData:
         return CheckpointData(
@@ -135,9 +143,28 @@ class GraphExecutor:
                     logging.error(
                         f"[STEP {self.superstep}] Node '{node_id}' timed out after {superstep_timeout:.1f}s."
                     )
+                    if (
+                        self.allow_fallback_from_checkpoint
+                        and not self.already_retried_from_checkpoint
+                    ):
+                        logging.warning("graph=executor event=fallback_to_checkpoint")
+                        chkpt = CheckpointData.load(self.checkpoint_path)
+                        fallback_executor = GraphExecutor.from_checkpoint(
+                            chkpt,
+                            checkpoint_path=self.checkpoint_path,
+                            checkpoint_every=self.checkpoint_every,
+                        )
+                        fallback_executor.allow_fallback_from_checkpoint = False
+                        fallback_executor.already_retried_from_checkpoint = True
+                        return await fallback_executor.execute(
+                            max_supersteps=max_supersteps,
+                            superstep_timeout=superstep_timeout,
+                        )
+                    logging.error("graph=executor event=no_fallback_available")
                     raise GraphExecutionError(
                         node_id, f"Execution timed out after {superstep_timeout}s."
                     )
+
                 except Exception as e:
                     fallback_id = getattr(node, "fallback_node_id", None)
                     if fallback_id:
