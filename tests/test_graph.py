@@ -1932,3 +1932,98 @@ async def test_82_circle_graph_with_fallback():
     assert op["node1"] == 2
     assert op["node2"] == 2
     assert op["fall_node"] == 1
+
+
+@pytest.mark.asyncio
+async def test_83_node_with_custom_retry_policy_succeeds():
+    call_count = {"tries": 0}
+
+    @node_action
+    async def flaky_action(state: State) -> State:
+        call_count["tries"] += 1
+        if call_count["tries"] < 3:
+            raise Exception("Flaky failure")
+        state.messages.append("Success")
+        return state
+
+    builder = GraphBuilder()
+    flaky_node = ProcessingNode("flaky", flaky_action)
+    builder.add_node(flaky_node)
+    builder.add_concrete_edge("start", "flaky")
+    builder.add_concrete_edge("flaky", "end")
+
+    # Set custom retry policy
+    builder.set_node_retry_policy(
+        "flaky", RetryPolicy(max_retries=5, delay=0.01, backoff=1.0)
+    )
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+
+    final_state = await executor.execute()
+
+    assert "Success" in final_state.messages
+    assert call_count["tries"] == 3  # 2 failures + 1 success
+
+
+@pytest.mark.asyncio
+async def test_84_node_fallbacks_to_graph_retry_policy():
+    call_count = {"tries": 0}
+
+    @node_action
+    async def flaky_action(state: State) -> State:
+        call_count["tries"] += 1
+        if call_count["tries"] < 2:
+            raise Exception("Temporary failure")
+        state.messages.append("Recovered")
+        return state
+
+    builder = GraphBuilder()
+    flaky_node = ProcessingNode("flaky", flaky_action)
+    builder.add_node(flaky_node)
+    builder.add_concrete_edge("start", "flaky")
+    builder.add_concrete_edge("flaky", "end")
+
+    graph = builder.build_graph()
+
+    # No node-level retry_policy set
+    executor = GraphExecutor(
+        graph,
+        State(messages=[]),
+        retry_policy=RetryPolicy(max_retries=3, delay=0.01, backoff=1.0),
+    )
+
+    final_state = await executor.execute()
+
+    assert "Recovered" in final_state.messages
+    assert call_count["tries"] == 2  # 1 failure + 1 success
+
+
+@pytest.mark.asyncio
+async def test_85_node_exceeds_retries_and_fails():
+    call_count = {"tries": 0}
+
+    @node_action
+    async def always_fail(state: State) -> State:
+        call_count["tries"] += 1
+        raise Exception("Always failing")
+
+    builder = GraphBuilder()
+    fail_node = ProcessingNode("fail", always_fail)
+    builder.add_node(fail_node)
+    builder.add_concrete_edge("start", "fail")
+    builder.add_concrete_edge("fail", "end")
+
+    # Setting node retry policy to 2 retries
+    builder.set_node_retry_policy(
+        "fail", RetryPolicy(max_retries=2, delay=0.01, backoff=1.0)
+    )
+
+    graph = builder.build_graph()
+    executor = GraphExecutor(graph, State(messages=[]))
+
+    with pytest.raises(GraphExecutionError) as exc_info:
+        await executor.execute()
+
+    assert "Always failing" in str(exc_info.value)
+    assert call_count["tries"] == 3  # 1 initial + 2 retries

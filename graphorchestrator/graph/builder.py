@@ -1,6 +1,7 @@
 import logging
 from typing import Callable, List
 
+from graphorchestrator.core.retry import RetryPolicy
 from graphorchestrator.core.state import State
 from graphorchestrator.core.exceptions import (
     DuplicateNodeError,
@@ -40,6 +41,14 @@ class GraphBuilder:
         self.graph.nodes[node_id].set_fallback(fallback_node_id)
         logging.debug(
             f"graph=builder event=set_fallback_node node={node_id} fallback={fallback_node_id}"
+        )
+
+    def set_node_retry_policy(self, node_id: str, retry_policy: RetryPolicy) -> None:
+        if node_id not in self.graph.nodes:
+            raise NodeNotFoundError(node_id)
+        self.graph.nodes[node_id].set_retry_policy(retry_policy)
+        logging.debug(
+            f"graph=builder event=set_node_retry_policy node={node_id} retry_policy={str(retry_policy)}"
         )
 
     def add_aggregator(self, aggregator: AggregatorNode):
