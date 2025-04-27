@@ -1136,7 +1136,9 @@ async def test_56_retry_logic_on_tool_node():
     builder.add_node(ToolNode("flaky", "unstable", flaky_tool))
     builder.add_concrete_edge("start", "flaky")
     builder.add_concrete_edge("flaky", "end")
-    result = await GraphExecutor(builder.build_graph(), State(messages=[])).execute()
+    result = await GraphExecutor(
+        builder.build_graph(), State(messages=[]), retry_policy=RetryPolicy()
+    ).execute()
     assert "recovered" in result.messages
 
 
@@ -1792,7 +1794,7 @@ async def test_78_fallback_node_executes_on_failure():
     builder.add_concrete_edge("main", "end")
 
     graph = builder.build_graph()
-    executor = GraphExecutor(graph, State(messages=[]))
+    executor = GraphExecutor(graph, State(messages=[]), retry_policy=RetryPolicy())
     result = await executor.execute()
     assert "Recovered" in result.messages
     assert call_log.count("main") == 4  # 1 + 3 retries
