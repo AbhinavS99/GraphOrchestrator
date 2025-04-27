@@ -30,7 +30,9 @@ class GraphExecutor:
         self.max_workers = max_workers
         self.active_states: Dict[str, List[State]] = defaultdict(list)
         self.active_states[graph.start_node.node_id].append(initial_state)
-        self.retry_policy = retry_policy if retry_policy else RetryPolicy()
+        self.retry_policy = (
+            retry_policy if retry_policy else RetryPolicy(max_retries=0, delay=0)
+        )
         self.semaphore = asyncio.Semaphore(self.max_workers)
         self.checkpoint_path = checkpoint_path
         self.checkpoint_every = checkpoint_every
