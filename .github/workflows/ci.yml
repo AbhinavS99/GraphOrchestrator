@@ -40,6 +40,8 @@ jobs:
     name: Run Unit Tests
     # needs: static-analysis  # <-- This makes sure it runs *after* static-analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
