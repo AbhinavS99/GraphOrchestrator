@@ -1,10 +1,13 @@
-import logging
 from typing import Callable, List
 
 from graphorchestrator.core.state import State
 from graphorchestrator.core.exceptions import RoutingFunctionNotDecoratedError
 from graphorchestrator.nodes.base import Node
 from graphorchestrator.edges.base import Edge
+
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class ConditionalEdge(Edge):
@@ -13,16 +16,6 @@ class ConditionalEdge(Edge):
 
     A ConditionalEdge directs the flow of execution to one of several sink nodes
     based on the result of a routing function.
-
-    Args:
-        source (Node): The source node of the edge.
-        sinks (List[Node]): A list of possible sink nodes for the edge.
-        router (Callable[[State], str]): A routing function that determines
-            which sink node to direct to based on the current state.
-
-    Raises:
-        RoutingFunctionNotDecoratedError: If the provided router function
-            is not decorated with @routing_function.
     """
 
     def __init__(
@@ -31,11 +24,23 @@ class ConditionalEdge(Edge):
         """Initializes a ConditionalEdge with a source, multiple sinks, and a router function."""
         self.source = source
         self.sinks = sinks
+
         if not getattr(router, "is_routing_function", False):
             raise RoutingFunctionNotDecoratedError(router)
-        self.routing_function = router
 
-        sink_ids = ",".join([s.node_id for s in sinks])  # type: ignore
-        logging.info(
-            f"edge=conditional event=init source={self.source.node_id} sinks=[{sink_ids}] router={router.__name__}"
+        self.routing_function = router
+        sink_ids = [s.node_id for s in sinks]
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="Conditional edge created",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "edge_created",
+                    LC.EDGE_TYPE: "conditional",
+                    LC.SOURCE_NODE: self.source.node_id,
+                    LC.SINK_NODE: sink_ids,  # Using SINK_NODE for consistency; optional to split as LC.SINK_NODES
+                    LC.ROUTER_FUNC: router.__name__,
+                }
+            )
         )

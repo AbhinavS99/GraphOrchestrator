@@ -1,6 +1,9 @@
 from collections import defaultdict, deque
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, Circle
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 from graphorchestrator.visualization.representation import (
     RepresentationalGraph,
@@ -13,9 +16,21 @@ class GraphVisualizer:
         self.rep_graph = rep_graph
 
     def _compute_levels(self):
+        log = GraphLogger.get()
         levels = {}
         start_id = "start"
+
         if start_id not in self.rep_graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Start node missing in representational graph",
+                    **{
+                        LC.EVENT_TYPE: "visualization",
+                        LC.ACTION: "compute_levels_failed",
+                        LC.CUSTOM: {"missing_node": "start"},
+                    }
+                )
+            )
             raise ValueError("No 'start' node found in the representational graph.")
 
         queue = deque([(start_id, 0)])
@@ -34,6 +49,22 @@ class GraphVisualizer:
         return levels
 
     def visualize(self, show: bool = True) -> None:
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="Graph visualization started",
+                **{
+                    LC.EVENT_TYPE: "visualization",
+                    LC.ACTION: "visualize_start",
+                    LC.CUSTOM: {
+                        "nodes": len(self.rep_graph.nodes),
+                        "edges": len(self.rep_graph.edges),
+                    },
+                }
+            )
+        )
+
         levels = self._compute_levels()
 
         level_nodes = defaultdict(list)
@@ -63,14 +94,14 @@ class GraphVisualizer:
             start_pos = pos[src_id]
             end_pos = pos[sink_id]
 
-            if edge.edge_type.name == RepresentationalEdgeType.CONCRETE.name:
-                color = "gray"
-                connection_style = "arc3,rad=0.0"
-                line_style = "solid"
-            else:
+            if edge.edge_type == RepresentationalEdgeType.CONDITIONAL:
                 color = "orange"
                 connection_style = "arc3,rad=0.2"
                 line_style = "dashed"
+            else:
+                color = "gray"
+                connection_style = "arc3,rad=0.0"
+                line_style = "solid"
 
             arrow = FancyArrowPatch(
                 start_pos,
@@ -90,5 +121,13 @@ class GraphVisualizer:
         ax.autoscale()
         ax.axis("off")
         plt.tight_layout()
+
+        log.info(
+            **wrap_constants(
+                message="Graph visualization complete",
+                **{LC.EVENT_TYPE: "visualization", LC.ACTION: "visualize_complete"}
+            )
+        )
+
         if show:
             plt.show()

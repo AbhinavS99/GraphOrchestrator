@@ -1,6 +1,8 @@
 import asyncio
 import copy
-import logging
+import uuid
+import getpass
+import socket
 from typing import Dict, List, Optional
 from collections import defaultdict
 
@@ -11,6 +13,10 @@ from graphorchestrator.core.exceptions import GraphExecutionError
 from graphorchestrator.nodes.nodes import AggregatorNode
 from graphorchestrator.edges.concrete import ConcreteEdge
 from graphorchestrator.edges.conditional import ConditionalEdge
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
+from graphorchestrator.core.log_context import LogContext
 
 
 class GraphExecutor:
@@ -24,7 +30,38 @@ class GraphExecutor:
         checkpoint_every: Optional[int] = None,
         allow_fallback_from_checkpoint: bool = False,
     ) -> None:
-        logging.info("graph=executor event=init max_workers=%d", max_workers)
+        LogContext.set(
+            {
+                LC.RUN_ID: str(uuid.uuid4()),
+                LC.GRAPH_NAME: getattr(graph, "name", None),
+                LC.USER_ID: getpass.getuser(),
+                LC.HOSTNAME: socket.gethostname(),
+            }
+        )
+        log = GraphLogger.get()
+        log.info(
+            **wrap_constants(
+                message="GraphExecutor initialized",
+                **{
+                    LC.EVENT_TYPE: "executor",
+                    LC.ACTION: "executor_init",
+                    LC.CUSTOM: {
+                        "max_workers": max_workers,
+                        "checkpoint_enabled": bool(checkpoint_path),
+                        "checkpoint_every": checkpoint_every,
+                        "allow_fallback_from_checkpoint": allow_fallback_from_checkpoint,
+                        "retry_policy": {
+                            "max_retries": (
+                                retry_policy.max_retries if retry_policy else 0
+                            ),
+                            "delay": retry_policy.delay if retry_policy else 0,
+                            "backoff": retry_policy.backoff if retry_policy else 1,
+                        },
+                    },
+                },
+            )
+        )
+
         self.graph = graph
         self.initial_state = initial_state
         self.max_workers = max_workers
@@ -40,13 +77,51 @@ class GraphExecutor:
         self.final_state = None
         self.allow_fallback_from_checkpoint = allow_fallback_from_checkpoint
         self.already_retried_from_checkpoint = False
+
         if self.allow_fallback_from_checkpoint and not self.checkpoint_path:
+            log.error(
+                **wrap_constants(
+                    message="Checkpoint fallback enabled without path",
+                    **{
+                        LC.EVENT_TYPE: "executor",
+                        LC.ACTION: "executor_init_failed",
+                        LC.CUSTOM: {
+                            "reason": "allow_fallback_from_checkpoint=True but checkpoint_path=None"
+                        },
+                    },
+                )
+            )
             raise GraphExecutionError(
                 node_id="GraphExecutor",
                 message="Fallback from checkpoint is enabled, but no checkpoint_path is provided.",
             )
 
     def to_checkpoint(self) -> CheckpointData:
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="Serializing current graph state into checkpoint",
+                **{
+                    LC.EVENT_TYPE: "executor",
+                    LC.ACTION: "create_checkpoint",
+                    LC.SUPERSTEP: self.superstep,
+                    LC.CUSTOM: {
+                        "active_node_ids": list(self.active_states.keys()),
+                        "final_state_message_count": (
+                            len(self.final_state.messages) if self.final_state else None
+                        ),
+                        "max_workers": self.max_workers,
+                        "retry_policy": {
+                            "max_retries": self.retry_policy.max_retries,
+                            "delay": self.retry_policy.delay,
+                            "backoff": self.retry_policy.backoff,
+                        },
+                    },
+                },
+            )
+        )
+
         return CheckpointData(
             graph=self.graph,
             initial_state=self.initial_state,
@@ -64,6 +139,30 @@ class GraphExecutor:
         checkpoint_path: Optional[str] = None,
         checkpoint_every: Optional[int] = None,
     ):
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="Restoring executor from checkpoint",
+                **{
+                    LC.EVENT_TYPE: "executor",
+                    LC.ACTION: "restore_from_checkpoint",
+                    LC.SUPERSTEP: chkpt.superstep,
+                    LC.CUSTOM: {
+                        "active_node_ids": list(chkpt.active_states.keys()),
+                        "final_state_message_count": (
+                            len(chkpt.final_state.messages)
+                            if chkpt.final_state
+                            else None
+                        ),
+                        "max_workers": chkpt.max_workers,
+                        "checkpoint_path": checkpoint_path,
+                        "checkpoint_every": checkpoint_every,
+                    },
+                },
+            )
+        )
+
         executor = cls(
             graph=chkpt.graph,
             initial_state=chkpt.initial_state,
@@ -80,25 +179,65 @@ class GraphExecutor:
     async def _execute_node_with_retry_async(
         self, node, input_data, retry_policy
     ) -> None:
+        log = GraphLogger.get()
+
         retry_policy = (
             node.retry_policy if node.retry_policy is not None else retry_policy
         )
         attempt = 0
         delay = retry_policy.delay
+
         while attempt <= retry_policy.max_retries:
             async with self.semaphore:
                 try:
-                    logging.info(f"Running node={node.node_id} attempt={attempt}")
+                    log.info(
+                        **wrap_constants(
+                            message="Executing node with retry",
+                            **{
+                                LC.EVENT_TYPE: "node",
+                                LC.ACTION: "node_execution_attempt",
+                                LC.NODE_ID: node.node_id,
+                                LC.RETRY_COUNT: attempt,
+                                LC.MAX_RETRIES: retry_policy.max_retries,
+                                LC.RETRY_DELAY: delay,
+                            },
+                        )
+                    )
+
                     return await node.execute(input_data)
+
                 except Exception as e:
                     if attempt == retry_policy.max_retries:
-                        logging.error(
-                            f"Node '{node.node_id}' failed after {attempt+1} attempts: {e}"
+                        log.error(
+                            **wrap_constants(
+                                message="Node execution failed after max retries",
+                                **{
+                                    LC.EVENT_TYPE: "node",
+                                    LC.ACTION: "node_execution_failed",
+                                    LC.NODE_ID: node.node_id,
+                                    LC.RETRY_COUNT: attempt,
+                                    LC.MAX_RETRIES: retry_policy.max_retries,
+                                    LC.CUSTOM: {"error": str(e)},
+                                },
+                            )
                         )
                         raise e
-                    logging.warning(
-                        f"Node '{node.node_id}' failed (attempt {attempt + 1}): {e}. Retrying in {delay:.2f}s."
+
+                    log.warning(
+                        **wrap_constants(
+                            message="Node execution failed — will retry",
+                            **{
+                                LC.EVENT_TYPE: "node",
+                                LC.ACTION: "node_retry_scheduled",
+                                LC.NODE_ID: node.node_id,
+                                LC.RETRY_COUNT: attempt,
+                                LC.MAX_RETRIES: retry_policy.max_retries,
+                                LC.RETRY_DELAY: delay,
+                                LC.CUSTOM: {"error": str(e)},
+                            },
+                        )
                     )
+
                     await asyncio.sleep(delay)
                     delay *= retry_policy.backoff
                     attempt += 1
@@ -106,13 +245,37 @@ class GraphExecutor:
     async def execute(
         self, max_supersteps: int = 100, superstep_timeout: float = 300.0
     ) -> Optional[State]:
-        logging.info("🚀 Graph execution started.")
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="Graph execution started",
+                **{
+                    LC.EVENT_TYPE: "executor",
+                    LC.ACTION: "execution_start",
+                    LC.CUSTOM: {
+                        "max_supersteps": max_supersteps,
+                        "timeout_per_superstep": superstep_timeout,
+                    },
+                },
+            )
+        )
+
         final_state = None
 
         while self.active_states and self.superstep < max_supersteps:
-            logging.info(
-                f"[STEP {self.superstep}] Nodes to execute: {list(self.active_states.keys())}"
+            log.info(
+                **wrap_constants(
+                    message=f"Superstep {self.superstep} execution",
+                    **{
+                        LC.EVENT_TYPE: "executor",
+                        LC.ACTION: "superstep_started",
+                        LC.SUPERSTEP: self.superstep,
+                        LC.CUSTOM: {"active_nodes": list(self.active_states.keys())},
+                    },
+                )
             )
+
             next_active_states: Dict[str, List[State]] = defaultdict(list)
             tasks = []
 
@@ -138,18 +301,45 @@ class GraphExecutor:
                 node = self.graph.nodes[node_id]
                 try:
                     result_state = await task
-                    logging.info(
-                        f"[STEP {self.superstep}] Node '{node_id}' execution complete."
+                    log.info(
+                        **wrap_constants(
+                            message="Node execution complete",
+                            **{
+                                LC.EVENT_TYPE: "node",
+                                LC.ACTION: "node_execution_complete",
+                                LC.SUPERSTEP: self.superstep,
+                                LC.NODE_ID: node_id,
+                            },
+                        )
                     )
+
                 except asyncio.TimeoutError:
-                    logging.error(
-                        f"[STEP {self.superstep}] Node '{node_id}' timed out after {superstep_timeout:.1f}s."
+                    log.error(
+                        **wrap_constants(
+                            message="Node execution timed out",
+                            **{
+                                LC.EVENT_TYPE: "node",
+                                LC.ACTION: "timeout",
+                                LC.SUPERSTEP: self.superstep,
+                                LC.NODE_ID: node_id,
+                                LC.TIMEOUT: superstep_timeout,
+                            },
+                        )
                     )
+
                     if (
                         self.allow_fallback_from_checkpoint
                         and not self.already_retried_from_checkpoint
                     ):
-                        logging.warning("graph=executor event=fallback_to_checkpoint")
+                        log.warning(
+                            **wrap_constants(
+                                message="Falling back to checkpoint after timeout",
+                                **{
+                                    LC.EVENT_TYPE: "executor",
+                                    LC.ACTION: "fallback_to_checkpoint",
+                                },
+                            )
+                        )
                         chkpt = CheckpointData.load(self.checkpoint_path)
                         fallback_executor = GraphExecutor.from_checkpoint(
                             chkpt,
@@ -162,7 +352,17 @@ class GraphExecutor:
                             max_supersteps=max_supersteps,
                             superstep_timeout=superstep_timeout,
                         )
-                    logging.error("graph=executor event=no_fallback_available")
+
+                    log.error(
+                        **wrap_constants(
+                            message="No checkpoint fallback available",
+                            **{
+                                LC.EVENT_TYPE: "executor",
+                                LC.ACTION: "no_fallback",
+                                LC.NODE_ID: node_id,
+                            },
+                        )
+                    )
                     raise GraphExecutionError(
                         node_id, f"Execution timed out after {superstep_timeout}s."
                     )
@@ -171,8 +371,17 @@ class GraphExecutor:
                     fallback_id = getattr(node, "fallback_node_id", None)
                     if fallback_id:
                         fallback_node = self.graph.nodes[fallback_id]
-                        logging.warning(
-                            f"graph=executor event=fallback_invoked from={node_id} to={fallback_id} reason={e}"
+                        log.warning(
+                            **wrap_constants(
+                                message="Fallback invoked due to node failure",
+                                **{
+                                    LC.EVENT_TYPE: "executor",
+                                    LC.ACTION: "fallback_invoked",
+                                    LC.SOURCE_NODE: node_id,
+                                    LC.FALLBACK_NODE: fallback_id,
+                                    LC.CUSTOM: {"reason": str(e)},
+                                },
+                            )
                         )
                         try:
                             result_state = await asyncio.wait_for(
@@ -181,30 +390,62 @@ class GraphExecutor:
                                 ),
                                 timeout=superstep_timeout,
                             )
-                            logging.info(
-                                f"graph=executor event=fallback_success node={fallback_id}"
+                            log.info(
+                                **wrap_constants(
+                                    message="Fallback node execution succeeded",
+                                    **{
+                                        LC.EVENT_TYPE: "executor",
+                                        LC.ACTION: "fallback_success",
+                                        LC.FALLBACK_NODE: fallback_id,
+                                    },
+                                )
                             )
                         except Exception as fallback_error:
-                            logging.error(
-                                f"graph=executor event=fallback_failed node={fallback_id} reason={fallback_error}"
+                            log.error(
+                                **wrap_constants(
+                                    message="Fallback node execution failed",
+                                    **{
+                                        LC.EVENT_TYPE: "executor",
+                                        LC.ACTION: "fallback_failed",
+                                        LC.FALLBACK_NODE: fallback_id,
+                                        LC.CUSTOM: {"reason": str(fallback_error)},
+                                    },
+                                )
                             )
                             raise GraphExecutionError(
                                 fallback_id, f"Fallback node failed: {fallback_error}"
                             )
                     else:
-                        logging.error(
-                            f"[STEP {self.superstep}] Node '{node_id}' execution failed: {e}"
+                        log.error(
+                            **wrap_constants(
+                                message="Node execution failed without fallback",
+                                **{
+                                    LC.EVENT_TYPE: "node",
+                                    LC.ACTION: "node_execution_failed",
+                                    LC.NODE_ID: node_id,
+                                    LC.SUPERSTEP: self.superstep,
+                                    LC.CUSTOM: {"error": str(e)},
+                                },
+                            )
                         )
                         raise GraphExecutionError(node_id, str(e))
 
-                # Use original node's outgoing edges even after fallback
+                # Transition state to next active nodes
                 for edge in node.outgoing_edges:
                     if isinstance(edge, ConcreteEdge):
                         next_active_states[edge.sink.node_id].append(
                             copy.deepcopy(result_state)
                         )
-                        logging.info(
-                            f"[STEP {self.superstep}] {node_id} → {edge.sink.node_id} (via concrete)"
+                        log.info(
+                            **wrap_constants(
+                                message="Edge transition (concrete)",
+                                **{
+                                    LC.EVENT_TYPE: "edge",
+                                    LC.ACTION: "concrete_edge_transition",
+                                    LC.SOURCE_NODE: node_id,
+                                    LC.SINK_NODE: edge.sink.node_id,
+                                },
+                            )
                         )
                     elif isinstance(edge, ConditionalEdge):
                         chosen_id = await edge.routing_function(result_state)
@@ -216,8 +457,17 @@ class GraphExecutor:
                         next_active_states[chosen_id].append(
                             copy.deepcopy(result_state)
                         )
-                        logging.info(
-                            f"[STEP {self.superstep}] {node_id} → {chosen_id} (via conditional router={edge.routing_function.__name__})"
+                        log.info(
+                            **wrap_constants(
+                                message="Edge transition (conditional)",
+                                **{
+                                    LC.EVENT_TYPE: "edge",
+                                    LC.ACTION: "conditional_edge_transition",
+                                    LC.SOURCE_NODE: node_id,
+                                    LC.SINK_NODE: chosen_id,
+                                    LC.ROUTER_FUNC: edge.routing_function.__name__,
+                                },
+                            )
                         )
 
                 if node_id == self.graph.end_node.node_id:
@@ -232,17 +482,62 @@ class GraphExecutor:
                 and self.checkpoint_every
                 and self.superstep % self.checkpoint_every == 0
             ):
-                logging.info(f"📌 Auto-saving checkpoint at superstep {self.superstep}")
+                log.info(
+                    **wrap_constants(
+                        message="Auto-saving checkpoint",
+                        **{
+                            LC.EVENT_TYPE: "executor",
+                            LC.ACTION: "auto_checkpoint",
+                            LC.SUPERSTEP: self.superstep,
+                            LC.CUSTOM: {"checkpoint_path": self.checkpoint_path},
+                        },
+                    )
+                )
                 self.to_checkpoint().save(self.checkpoint_path)
 
-            logging.info(
-                f"[STEP {self.superstep}] Next active nodes: {list(self.active_states.keys())}"
+            log.info(
+                **wrap_constants(
+                    message="Superstep completed",
+                    **{
+                        LC.EVENT_TYPE: "executor",
+                        LC.ACTION: "superstep_complete",
+                        LC.SUPERSTEP: self.superstep,
+                        LC.CUSTOM: {
+                            "next_active_nodes": list(self.active_states.keys())
+                        },
+                    },
+                )
             )
 
         if self.superstep >= max_supersteps:
-            logging.error("💥 Max supersteps reached — possible infinite loop.")
+            log.error(
+                **wrap_constants(
+                    message="Max supersteps reached — possible infinite loop",
+                    **{LC.EVENT_TYPE: "executor", LC.ACTION: "max_supersteps_exceeded"},
+                )
+            )
             raise GraphExecutionError("N/A", "Max supersteps reached")
 
-        logging.info("✅ Graph execution completed successfully.")
-        logging.info(f"🧾 Final state: \n{final_state}")
+        log.info(
+            **wrap_constants(
+                message="Graph execution completed successfully",
+                **{LC.EVENT_TYPE: "executor", LC.ACTION: "execution_complete"},
+            )
+        )
+
+        log.info(
+            **wrap_constants(
+                message="Final state summary",
+                **{
+                    LC.EVENT_TYPE: "executor",
+                    LC.ACTION: "final_state",
+                    LC.CUSTOM: {
+                        "message_count": (
+                            len(final_state.messages) if final_state else None
+                        )
+                    },
+                },
+            )
+        )
+
         return final_state

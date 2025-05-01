@@ -1,12 +1,14 @@
 from __future__ import annotations
-import asyncio, json, uvicorn
-from typing import Any, Dict, List, Callable
+import json, uvicorn
+from typing import Any, List, Callable
 from fastapi import FastAPI, Response, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 # Import core types
 from graphorchestrator.core.state import State
-from graphorchestrator.decorators.actions import tool_method
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 # Pydantic model to parse incoming JSON
@@ -38,17 +40,54 @@ class _ToolSetMeta(type):
         # Tool method to FastAPI route
         def make_endpoint(fn: Callable):
             async def endpoint(payload: StateModel, _=Depends(_check)):
+                log = GraphLogger.get()
                 state_in = State(messages=payload.messages)
+
+                log.info(
+                    **wrap_constants(
+                        message="Tool method invoked",
+                        **{
+                            LC.EVENT_TYPE: "tool",
+                            LC.ACTION: "tool_invoked",
+                            LC.NODE_ID: fn.__name__,
+                            LC.INPUT_SIZE: len(state_in.messages),
+                        },
+                    )
+                )
+
                 try:
                     result = await fn(state_in)
-                except HTTPException:
-                    # preserve HTTP errors
-                    raise
+                except HTTPException as e:
+                    raise  # re-raise to preserve HTTP semantics
                 except Exception as e:
-                    # return exception message on 500
+                    log.error(
+                        **wrap_constants(
+                            message="Tool method execution failed",
+                            **{
+                                LC.EVENT_TYPE: "tool",
+                                LC.ACTION: "tool_failed",
+                                LC.NODE_ID: fn.__name__,
+                                LC.CUSTOM: {"error": str(e)},
+                            },
+                        )
+                    )
                     return Response(
                         content=str(e), status_code=500, media_type="text/plain"
                     )
+
+                log.info(
+                    **wrap_constants(
+                        message="Tool method execution succeeded",
+                        **{
+                            LC.EVENT_TYPE: "tool",
+                            LC.ACTION: "tool_success",
+                            LC.NODE_ID: fn.__name__,
+                            LC.OUTPUT_SIZE: len(result.messages),
+                            LC.SUCCESS: True,
+                        },
+                    )
+                )
+
                 return Response(
                     content=json.dumps({"messages": result.messages}),
                     media_type="application/json",

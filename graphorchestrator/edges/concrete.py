@@ -1,6 +1,9 @@
-import logging
 from graphorchestrator.nodes.base import Node
 from graphorchestrator.edges.base import Edge
+
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class ConcreteEdge(Edge):
@@ -18,6 +21,16 @@ class ConcreteEdge(Edge):
     def __init__(self, source: Node, sink: Node) -> None:
         self.source = source
         self.sink = sink
-        logging.info(
-            f"edge=concrete event=init source={self.source.node_id} sink={self.sink.node_id}"
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="Concrete edge created",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "edge_created",
+                    LC.EDGE_TYPE: "concrete",
+                    LC.SOURCE_NODE: self.source.node_id,
+                    LC.SINK_NODE: self.sink.node_id,
+                }
+            )
         )

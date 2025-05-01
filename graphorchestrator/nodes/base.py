@@ -1,7 +1,10 @@
-import logging
 from abc import ABC, abstractmethod
 from typing import Optional
+
 from graphorchestrator.core.retry import RetryPolicy
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class Node(ABC):
@@ -24,9 +27,22 @@ class Node(ABC):
         self.fallback_node_id: Optional[str] = None
         self.retry_policy: Optional[RetryPolicy] = None
 
-        # Log the initialization of the node
-        logging.info(
-            f"node=base event=init node_id={self.node_id} incoming=0 outgoing=0"
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="Node initialized",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: self.__class__.__name__,
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {
+                        "incoming_edges": 0,
+                        "outgoing_edges": 0,
+                        "fallback_node_id": None,
+                        "retry_policy": None,
+                    },
+                }
+            )
         )
 
     @abstractmethod
