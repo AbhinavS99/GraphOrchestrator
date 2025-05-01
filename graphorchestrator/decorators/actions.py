@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from functools import wraps
 from typing import Callable, List
 
@@ -10,36 +9,44 @@ from graphorchestrator.core.exceptions import (
     InvalidToolMethodOutput,
     InvalidAggregatorActionError,
 )
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
-    """
-    Decorator to mark a function as a routing function.
-
-    A routing function is responsible for deciding which node to execute next
-    based on the current state of the graph. It receives the current state as
-    input and should return the name of the next node as a string.
-
-    Args:
-        func: The function to be decorated. It should accept a State object and
-            return a string (the name of the next node).
-
-    Returns:
-        A decorated function that performs the routing logic and type checking.
-
-    """
-
     @wraps(func)
     async def wrapper(state: State) -> str:
+        log = GraphLogger.get()
         show_state = getattr(func, "show_state", False)
         state_log = str(state) if show_state else f"<messages={len(state.messages)}>"
-        logging.debug(
-            f"Routing function '{func.__name__}' called with state={state_log}"
+
+        log.debug(
+            **wrap_constants(
+                message="Routing function invoked",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "routing_function_invoked",
+                    LC.CUSTOM: {"function": func.__name__, "state": state_log},
+                },
+            )
         )
+
         result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, str):
-            logging.error(
-                f"Routing function '{func.__name__}' returned non-str: {result}"
+            log.error(
+                **wrap_constants(
+                    message="Routing function returned non-string",
+                    **{
+                        LC.EVENT_TYPE: "node",
+                        LC.ACTION: "routing_invalid_output",
+                        LC.CUSTOM: {
+                            "function": func.__name__,
+                            "returned_type": str(type(result)),
+                            "value": str(result)[:100],
+                        },
+                    },
+                )
             )
             raise InvalidRoutingFunctionOutput(result)
         return result
@@ -49,30 +56,39 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
 
 
 def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
-    """
-    Decorator to mark a function as a node action.
-
-    A node action is a function that performs a specific task within a node
-    in the graph. It receives the current state as input, modifies it, and
-    returns the updated state.
-
-    Args:
-        func: The function to be decorated. It should accept a State object,
-            modify it as needed, and return the updated State object.
-
-    Returns:
-        A decorated function that performs the node action logic and type checking.
-
-    """
-
     @wraps(func)
     async def wrapper(state: State) -> State:
+        log = GraphLogger.get()
         show_state = getattr(func, "show_state", False)
         state_log = str(state) if show_state else f"<messages={len(state.messages)}>"
-        logging.debug(f"Node action '{func.__name__}' called with state={state_log}")
+
+        log.debug(
+            **wrap_constants(
+                message="Node action invoked",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "node_action_invoked",
+                    LC.CUSTOM: {"function": func.__name__, "state": state_log},
+                },
+            )
+        )
+
         result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, State):
-            logging.error(f"Node action '{func.__name__}' returned non-State: {result}")
+            log.error(
+                **wrap_constants(
+                    message="Node action returned invalid output",
+                    **{
+                        LC.EVENT_TYPE: "node",
+                        LC.ACTION: "node_invalid_output",
+                        LC.CUSTOM: {
+                            "function": func.__name__,
+                            "returned_type": str(type(result)),
+                            "value": str(result)[:100],
+                        },
+                    },
+                )
+            )
             raise InvalidNodeActionOutput(result)
         return result
 
@@ -81,31 +97,39 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
 
 
 def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
-    """
-    Decorator to mark a function as a tool method.
-
-    A tool method is a function that represents a specific method within a
-    tool. It receives the current state as input, performs a task using
-    the tool, and returns the updated state. It is also a node action.
-
-    Args:
-        func: The function to be decorated. It should accept a State object,
-            interact with the tool as needed, and return the updated State
-            object.
-
-    Returns:
-        A decorated function that performs the tool method logic and type checking.
-
-    """
-
     @wraps(func)
     async def wrapper(state: State) -> State:
+        log = GraphLogger.get()
         show_state = getattr(func, "show_state", False)
         state_log = str(state) if show_state else f"<messages={len(state.messages)}>"
-        logging.debug(f"Tool method '{func.__name__}' called with state={state_log}")
+
+        log.debug(
+            **wrap_constants(
+                message="Tool method invoked",
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.ACTION: "tool_method_invoked",
+                    LC.CUSTOM: {"function": func.__name__, "state": state_log},
+                },
+            )
+        )
+
         result = await func(state) if asyncio.iscoroutinefunction(func) else func(state)
         if not isinstance(result, State):
-            logging.error(f"Tool method '{func.__name__}' returned non-State: {result}")
+            log.error(
+                **wrap_constants(
+                    message="Tool method returned invalid output",
+                    **{
+                        LC.EVENT_TYPE: "tool",
+                        LC.ACTION: "tool_invalid_output",
+                        LC.CUSTOM: {
+                            "function": func.__name__,
+                            "returned_type": str(type(result)),
+                            "value": str(result)[:100],
+                        },
+                    },
+                )
+            )
             raise InvalidToolMethodOutput(result)
         return result
 
@@ -117,37 +141,40 @@ def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
 def aggregator_action(
     func: Callable[[List[State]], State],
 ) -> Callable[[List[State]], State]:
-    """
-    Decorator to mark a function as an aggregator action.
-
-    An aggregator action is a function that combines multiple states into a
-    single state. This is useful when multiple nodes produce intermediate
-    states that need to be merged.
-
-    Args:
-        func: The function to be decorated. It should accept a list of State
-            objects, combine them into a single state, and return the
-            resulting State object.
-
-    Returns:
-        A decorated function that performs the aggregator action logic and
-        type checking.
-
-    """
-
     @wraps(func)
     async def wrapper(states: List[State]) -> State:
+        log = GraphLogger.get()
         show_state = getattr(func, "show_state", False)
         state_log = str(states) if show_state else f"<batch_count={len(states)}>"
-        logging.debug(
-            f"Aggregator action '{func.__name__}' called with states={state_log}"
+
+        log.debug(
+            **wrap_constants(
+                message="Aggregator action invoked",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "aggregator_invoked",
+                    LC.CUSTOM: {"function": func.__name__, "batch_summary": state_log},
+                },
+            )
         )
+
         result = (
             await func(states) if asyncio.iscoroutinefunction(func) else func(states)
         )
         if not isinstance(result, State):
-            logging.error(
-                f"Aggregator action '{func.__name__}' returned non-State: {result}"
+            log.error(
+                **wrap_constants(
+                    message="Aggregator returned invalid output",
+                    **{
+                        LC.EVENT_TYPE: "node",
+                        LC.ACTION: "aggregator_invalid_output",
+                        LC.CUSTOM: {
+                            "function": func.__name__,
+                            "returned_type": str(type(result)),
+                            "value": str(result)[:100],
+                        },
+                    },
+                )
             )
             raise InvalidAggregatorActionError(result)
         return result

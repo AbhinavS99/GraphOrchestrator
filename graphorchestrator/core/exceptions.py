@@ -1,227 +1,286 @@
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
+
+
 class GraphOrchestratorException(Exception):
-    """
-    Base exception for all exceptions raised by the graph orchestrator.
-    """
+    """Base exception for all exceptions raised by the graph orchestrator."""
 
     pass
 
 
 class DuplicateNodeError(GraphOrchestratorException):
-    """
-    Exception raised when attempting to add a node with an ID that already exists.
-
-    Attributes:
-        node_id (str): The ID of the node that caused the error.
-    """
-
     def __init__(self, node_id: str):
-        """
-        Initializes the DuplicateNodeError with the ID of the duplicate node.
-
-        Args:
-            node_id (str): The ID of the duplicate node.
-        """
-        super().__init__(f"Node with id '{node_id}' already exists.")
+        msg = f"Node with id '{node_id}' already exists."
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "duplicate_node",
+                    LC.NODE_ID: node_id,
+                },
+            ),
+        )
+        super().__init__(msg)
         self.node_id = node_id
 
 
 class EdgeExistsError(GraphOrchestratorException):
-    """
-    Exception raised when attempting to add an edge that already exists.
-
-    Attributes:
-        source_id (str): The ID of the source node of the duplicate edge.
-        sink_id (str): The ID of the sink node of the duplicate edge.
-    """
-
     def __init__(self, source_id: str, sink_id: str):
-        """
-        Initializes the EdgeExistsError with the IDs of the source and sink nodes of the duplicate edge.
-
-        Args:
-            source_id (str): The ID of the source node of the duplicate edge.
-            sink_id (str): The ID of the sink node of the duplicate edge.
-        """
-        super().__init__(f"Edge from '{source_id}' to '{sink_id}' already exists.")
+        msg = f"Edge from '{source_id}' to '{sink_id}' already exists."
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "duplicate_edge",
+                    LC.SOURCE_NODE: source_id,
+                    LC.SINK_NODE: sink_id,
+                },
+            ),
+        )
+        super().__init__(msg)
         self.source_id = source_id
         self.sink_id = sink_id
 
 
 class NodeNotFoundError(GraphOrchestratorException):
-    """
-    Exception raised when a requested node is not found in the graph.
-
-    Attributes:
-        node_id (str): The ID of the node that was not found.
-    """
-
     def __init__(self, node_id: str):
-        """
-        Initializes the NodeNotFoundError with the ID of the node that was not found.
-
-        Args:
-            node_id (str): The ID of the node that was not found.
-        """
-        super().__init__(f"Node '{node_id}' not found in the graph.")
+        msg = f"Node '{node_id}' not found in the graph."
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "node_not_found",
+                    LC.NODE_ID: node_id,
+                },
+            ),
+        )
+        super().__init__(msg)
         self.node_id = node_id
 
 
 class GraphConfigurationError(GraphOrchestratorException):
-    """Exception raised when there is an error in the graph's configuration."""
-
     def __init__(self, message: str):
-        """
-        Initializes the GraphConfigurationError with a custom message.
-
-        Args:
-            message (str): The error message describing the configuration issue.
-        """
-        super().__init__(f"Graph configuration error: {message}")
+        msg = f"Graph configuration error: {message}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "graph_config_error",
+                    LC.CUSTOM: {"error": message},
+                },
+            ),
+        )
+        super().__init__(msg)
 
 
 class GraphExecutionError(GraphOrchestratorException):
-    """
-    Exception raised when an error occurs during the execution of the graph.
-
-    Attributes:
-        node_id (str): The ID of the node where the error occurred.
-        message (str): The error message describing the execution issue.
-    """
-
     def __init__(self, node_id: str, message: str):
-        """
-        Initializes the GraphExecutionError with the ID of the node where the error occurred and a custom message.
-
-        Args:
-            node_id (str): The ID of the node where the error occurred.
-            message (str): The error message describing the execution issue.
-        """
-        super().__init__(f"Execution failed at node '{node_id}': {message}")
+        msg = f"Execution failed at node '{node_id}': {message}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "execution_failed",
+                    LC.NODE_ID: node_id,
+                    LC.CUSTOM: {"reason": message},
+                },
+            ),
+        )
+        super().__init__(msg)
         self.node_id = node_id
         self.message = message
 
 
 class InvalidRoutingFunctionOutput(GraphOrchestratorException):
-    """Exception raised when a routing function does not return a string."""
-
     def __init__(self, returned_value):
-        super().__init__(
-            f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}"
+        msg = f"Routing function must return a string, but got {type(returned_value).__name__}: {returned_value}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "invalid_routing_output",
+                    LC.CUSTOM: {
+                        "returned_type": str(type(returned_value)),
+                        "value": str(returned_value)[:100],
+                    },
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class InvalidNodeActionOutput(GraphOrchestratorException):
-    """Exception raised when a node action does not return a state."""
-
     def __init__(self, returned_value):
-        super().__init__(
-            f"Node action must return a state, but got {type(returned_value).__name__}: {returned_value}"
+        msg = f"Node action must return a state, but got {type(returned_value).__name__}: {returned_value}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "invalid_node_output",
+                    LC.CUSTOM: {
+                        "returned_type": str(type(returned_value)),
+                        "value": str(returned_value)[:100],
+                    },
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class InvalidToolMethodOutput(GraphOrchestratorException):
-    """Exception raised when a tool method does not return a state."""
-
     def __init__(self, returned_value):
-        super().__init__(
-            f"Tool method must return a state, but got {type(returned_value).__name__}: {returned_value}"
+        msg = f"Tool method must return a state, but got {type(returned_value).__name__}: {returned_value}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.ACTION: "invalid_tool_output",
+                    LC.CUSTOM: {
+                        "returned_type": str(type(returned_value)),
+                        "value": str(returned_value)[:100],
+                    },
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class NodeActionNotDecoratedError(GraphOrchestratorException):
     def __init__(self, func):
         name = getattr(func, "__name__", repr(func))
-        super().__init__(
-            f"The function '{name}' passed to ProcessingNode must be decorated with @node_action."
+        msg = f"The function '{name}' passed to ProcessingNode must be decorated with @node_action."
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "missing_node_action_decorator",
+                    LC.CUSTOM: {"function": name},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class RoutingFunctionNotDecoratedError(GraphOrchestratorException):
     def __init__(self, func):
         name = getattr(func, "__name__", repr(func))
-        super().__init__(
-            f"The function '{name}' passed to ConditionalEdge must be decorated with @routing_function."
+        msg = f"The function '{name}' passed to ConditionalEdge must be decorated with @routing_function."
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "missing_routing_function_decorator",
+                    LC.CUSTOM: {"function": name},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class InvalidAggregatorActionError(GraphOrchestratorException):
-    """
-    Exception raised when an aggregator action does not return a state.
-    """
-
     def __init__(self, returned_value):
-        super().__init__(
-            f"Aggregator action must return a state, but got {type(returned_value).__name__}"
+        msg = f"Aggregator action must return a state, but got {type(returned_value).__name__}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "invalid_aggregator_output",
+                    LC.CUSTOM: {"returned_type": str(type(returned_value))},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class AggregatorActionNotDecorated(GraphOrchestratorException):
-    """
-    Exception raised when an aggregator function is not decorated with @aggregator_action.
-
-    Attributes:
-        func: The undecorated function.
-    """
-
     def __init__(self, func):
-        """
-        Initializes the AggregatorActionNotDecorated with the undecorated function.
-
-        Args:
-            func: The undecorated function.
-        """
         name = getattr(func, "__name__", repr(func))
-        super().__init__(
-            f"The function '{name}' passed to Aggregator must be decorated with @aggregator_action"
+        msg = f"The function '{name}' passed to Aggregator must be decorated with @aggregator_action"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "missing_aggregator_decorator",
+                    LC.CUSTOM: {"function": name},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class EmptyToolNodeDescriptionError(GraphOrchestratorException):
-    """
-    Exception raised when a tool function has no description or docstring.
-
-    Attributes:
-        func: The tool function with no description.
-    """
-
     def __init__(self, func):
-        """
-        Initializes the EmptyToolNodeDescriptionError with the tool function missing a description.
-
-        Args:
-            func: The tool function missing a description.
-        """
         name = getattr(func, "__name__", repr(func))
-        super().__init__(
-            f"The tool function '{name}' has no description or docstring provided"
+        msg = f"The tool function '{name}' has no description or docstring provided"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.ACTION: "missing_description",
+                    LC.CUSTOM: {"function": name},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class ToolMethodNotDecorated(GraphOrchestratorException):
-    """
-    Exception raised when a tool method is not decorated with @tool_method.
-
-    Attributes:
-        func: The undecorated tool method.
-    """
-
     def __init__(self, func):
-        """
-        Initializes the ToolMethodNotDecorated with the undecorated tool method.
-
-        Args:
-            func: The undecorated tool method.
-        """
         name = getattr(func, "__name__", repr(func))
-        super().__init__(
-            f"The function '{name}' passed to ToolNode has to be decorated with @tool_method"
+        msg = f"The function '{name}' passed to ToolNode has to be decorated with @tool_method"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.ACTION: "missing_tool_method_decorator",
+                    LC.CUSTOM: {"function": name},
+                },
+            ),
         )
+        super().__init__(msg)
 
 
 class InvalidAIActionOutput(GraphOrchestratorException):
-    """Exception raised when an AI action does not return a state."""
-
     def __init__(self, returned_value):
-        super().__init__(
-            f"AI action must return a state, but got {type(returned_value).__name__}"
+        msg = f"AI action must return a state, but got {type(returned_value).__name__}"
+        GraphLogger.get().error(
+            msg,
+            **wrap_constants(
+                message=msg,
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.ACTION: "invalid_ai_output",
+                    LC.CUSTOM: {"returned_type": str(type(returned_value))},
+                },
+            ),
         )
+        super().__init__(msg)

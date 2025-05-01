@@ -14,7 +14,9 @@ from graphorchestrator.core.exceptions import (
     InvalidNodeActionOutput,
 )
 from graphorchestrator.nodes.base import Node
-from graphorchestrator.core.retry import RetryPolicy
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class ProcessingNode(Node):
@@ -23,10 +25,6 @@ class ProcessingNode(Node):
 
     This node takes a function that operates on a State object, processes it,
     and returns a modified State object.
-
-    Args:
-        node_id (str): The unique identifier for the processing node.
-        func (Callable[[State], State]): The function that processes the State.
     """
 
     def __init__(self, node_id: str, func: Callable[[State], State]) -> None:
@@ -34,8 +32,18 @@ class ProcessingNode(Node):
         self.func = func
         if not getattr(func, "is_node_action", False):
             raise NodeActionNotDecoratedError(func)
-        logging.info(
-            f"node=processing event=created node_id={self.node_id} func={func.__name__}"
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="ProcessingNode created",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ProcessingNode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {"function": func.__name__},
+                },
+            )
         )
 
     async def execute(self, state: State) -> State:
@@ -48,17 +56,40 @@ class ProcessingNode(Node):
         Returns:
             State: The modified state after processing.
         """
-        logging.debug(
-            f"node=processing event=execute_start node_id={self.node_id} input_size={len(state.messages)}"
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="ProcessingNode execution started",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ProcessingNode",
+                    LC.ACTION: "execute_start",
+                    LC.INPUT_SIZE: len(state.messages),
+                },
+            )
         )
+
         result = (
             await self.func(state)
             if asyncio.iscoroutinefunction(self.func)
             else self.func(state)
         )
-        logging.debug(
-            f"node=processing event=execute_end node_id={self.node_id} result_size={len(result.messages)}"
+
+        log.info(
+            **wrap_constants(
+                message="ProcessingNode execution completed",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ProcessingNode",
+                    LC.ACTION: "execute_end",
+                    LC.OUTPUT_SIZE: len(result.messages),
+                },
+            )
         )
+
         return result
 
 
@@ -68,10 +99,6 @@ class AggregatorNode(Node):
 
     This node takes a list of State objects, aggregates them, and returns a
     new State object representing the aggregated result.
-
-    Args:
-        node_id (str): The unique identifier for the aggregator node.
-        aggregator_action (Callable[[List[State]], State]): The aggregation function.
     """
 
     def __init__(
@@ -81,8 +108,18 @@ class AggregatorNode(Node):
         self.aggregator_action = aggregator_action
         if not getattr(aggregator_action, "is_aggregator_action", False):
             raise AggregatorActionNotDecorated(aggregator_action)
-        logging.info(
-            f"node=aggregator event=created node_id={self.node_id} func={aggregator_action.__name__}"
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="AggregatorNode created",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AggregatorNode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {"function": aggregator_action.__name__},
+                },
+            )
         )
 
     async def execute(self, states: List[State]) -> State:
@@ -95,17 +132,40 @@ class AggregatorNode(Node):
         Returns:
             State: The aggregated state.
         """
-        logging.debug(
-            f"node=aggregator event=execute_start node_id={self.node_id} input_batch={len(states)}"
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="AggregatorNode execution started",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AggregatorNode",
+                    LC.ACTION: "execute_start",
+                    LC.CUSTOM: {"input_batch_size": len(states)},
+                },
+            )
         )
+
         result = (
             await self.aggregator_action(states)
             if asyncio.iscoroutinefunction(self.aggregator_action)
             else self.aggregator_action(states)
         )
-        logging.debug(
-            f"node=aggregator event=execute_end node_id={self.node_id} result_size={len(result.messages)}"
+
+        log.info(
+            **wrap_constants(
+                message="AggregatorNode execution completed",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AggregatorNode",
+                    LC.ACTION: "execute_end",
+                    LC.OUTPUT_SIZE: len(result.messages),
+                },
+            )
         )
+
         return result
 
 
@@ -114,9 +174,6 @@ class ToolNode(ProcessingNode):
     A node that represents a tool.
 
     This node is a specialized ProcessingNode that wraps a tool method.
-    Args:
-      node_id: node id
-      tool_method: tool function to be executed
     """
 
     def __init__(
@@ -129,10 +186,24 @@ class ToolNode(ProcessingNode):
             raise ToolMethodNotDecorated(tool_method)
         if not (description or (tool_method.__doc__ or "").strip()):
             raise EmptyToolNodeDescriptionError(tool_method)
+
         super().__init__(node_id, tool_method)
         self.description = description
-        logging.info(
-            f"node=tool event=created node_id={self.node_id} func={tool_method.__name__} desc={'yes' if description else 'docstring'}"
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="ToolNode created",
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ToolNode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {
+                        "function": tool_method.__name__,
+                        "has_description": bool(description),
+                    },
+                },
+            )
         )
 
     async def execute(self, state: State) -> State:
@@ -145,17 +216,40 @@ class ToolNode(ProcessingNode):
         Returns:
             State: The state after executing the tool method.
         """
-        logging.debug(
-            f"node=tool event=execute_start node_id={self.node_id} input_size={len(state.messages)}"
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="ToolNode execution started",
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ToolNode",
+                    LC.ACTION: "execute_start",
+                    LC.INPUT_SIZE: len(state.messages),
+                },
+            )
         )
+
         result = (
             await self.func(state)
             if asyncio.iscoroutinefunction(self.func)
             else self.func(state)
         )
-        logging.debug(
-            f"node=tool event=execute_end node_id={self.node_id} result_size={len(result.messages)}"
+
+        log.info(
+            **wrap_constants(
+                message="ToolNode execution completed",
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "ToolNode",
+                    LC.ACTION: "execute_end",
+                    LC.OUTPUT_SIZE: len(result.messages),
+                },
+            )
         )
+
         return result
 
 
@@ -164,16 +258,6 @@ class AINode(ProcessingNode):
     A node that represents an AI model.
 
     This node wraps an AI model action.
-
-    Args:
-        node_id (str): The unique identifier for the AI node.
-        description (str): A description of the AI model.
-        model_action (Callable[[State], State]): The AI model action function.
-        response_format (Optional[str]): The expected response format.
-        response_parser (Optional[Callable[[State], Any]]): A parser for the response.
-
-    Raises:
-        InvalidAIActionOutput: If the output of the model action is not a State.
     """
 
     def __init__(
@@ -188,7 +272,23 @@ class AINode(ProcessingNode):
         self.description = description
         self.response_format = response_format
         self.response_parser = response_parser
-        logging.info(f"node=ai event=created node_id={self.node_id} desc={description}")
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="AINode created",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AINode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {
+                        "description": description,
+                        "response_format": response_format,
+                        "has_parser": bool(response_parser),
+                    },
+                },
+            )
+        )
 
     async def execute(self, state: State) -> State:
         """
@@ -199,37 +299,59 @@ class AINode(ProcessingNode):
 
         Returns:
             State: The state after executing the model action.
-
         """
-        logging.debug(
-            f"node=ai event=execute_start node_id={self.node_id} input_size={len(state.messages)}"
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="AINode execution started",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AINode",
+                    LC.ACTION: "execute_start",
+                    LC.INPUT_SIZE: len(state.messages),
+                },
+            )
         )
+
         result = await self.func(state)
+
         if not isinstance(result, State):
-            logging.error(
-                f"node=ai event=invalid_output node_id={self.node_id} result_type={type(result)}"
+            log.error(
+                **wrap_constants(
+                    message="AINode returned invalid output",
+                    **{
+                        LC.EVENT_TYPE: "node",
+                        LC.NODE_ID: self.node_id,
+                        LC.NODE_TYPE: "AINode",
+                        LC.ACTION: "invalid_output",
+                        LC.CUSTOM: {"result_type": str(type(result))},
+                    },
+                )
             )
             raise InvalidAIActionOutput(result)
-        logging.debug(
-            f"node=ai event=execute_end node_id={self.node_id} result_size={len(result.messages)}"
+
+        log.info(
+            **wrap_constants(
+                message="AINode execution completed",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "AINode",
+                    LC.ACTION: "execute_end",
+                    LC.OUTPUT_SIZE: len(result.messages),
+                    LC.SUCCESS: True,
+                },
+            )
         )
+
         return result
 
 
 class HumanInTheLoopNode(ProcessingNode):
     """
     A node that pauses execution for human input.
-
-    This node allows a human to manually inspect and modify the state before execution proceeds.
-    The interaction logic is user-defined and can involve CLI prompts, UIs, webhooks, etc.
-
-    Args:
-        node_id (str): The unique identifier for the human-in-the-loop node.
-        interaction_handler (Callable[[State], State]): The async function that handles human interaction.
-        metadata (Optional[Dict[str, str]]): Optional metadata describing the human input or prompt.
-
-    Raises:
-        InvalidNodeActionOutput: If the interaction handler returns an invalid state.
     """
 
     def __init__(
@@ -242,36 +364,72 @@ class HumanInTheLoopNode(ProcessingNode):
             interaction_handler = node_action(interaction_handler)
 
         self.metadata = metadata or {}
-        logging.info(
-            f"node=human event=created node_id={node_id} metadata_keys={list(self.metadata.keys())}"
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="Human-in-the-loop node created",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: node_id,
+                    LC.NODE_TYPE: "HumanInTheLoopNode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {"metadata_keys": list(self.metadata.keys())},
+                },
+            )
         )
+
         super().__init__(node_id, interaction_handler)
 
     async def execute(self, state: State) -> State:
         """
         Executes the human-in-the-loop interaction.
-
-        Args:
-            state (State): The input state awaiting human intervention.
-
-        Returns:
-            State: The state after human interaction.
-
-        Raises:
-            InvalidNodeActionOutput: If the interaction handler returns invalid output.
         """
-        logging.debug(
-            f"node=human event=execute_start node_id={self.node_id} input_size={len(state.messages)}"
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="HumanInTheLoopNode execution started",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "HumanInTheLoopNode",
+                    LC.ACTION: "execute_start",
+                    LC.INPUT_SIZE: len(state.messages),
+                },
+            )
         )
+
         result = await self.func(state)
+
         if not isinstance(result, State):
-            logging.error(
-                f"node=human event=invalid_output node_id={self.node_id} result_type={type(result)}"
+            log.error(
+                **wrap_constants(
+                    message="Invalid output from human-in-the-loop handler",
+                    **{
+                        LC.EVENT_TYPE: "node",
+                        LC.NODE_ID: self.node_id,
+                        LC.NODE_TYPE: "HumanInTheLoopNode",
+                        LC.ACTION: "invalid_output",
+                        LC.CUSTOM: {"result_type": str(type(result))},
+                    },
+                )
             )
             raise InvalidNodeActionOutput(result)
-        logging.debug(
-            f"node=human event=execute_end node_id={self.node_id} result_size={len(result.messages)}"
+
+        log.info(
+            **wrap_constants(
+                message="HumanInTheLoopNode execution completed",
+                **{
+                    LC.EVENT_TYPE: "node",
+                    LC.NODE_ID: self.node_id,
+                    LC.NODE_TYPE: "HumanInTheLoopNode",
+                    LC.ACTION: "execute_end",
+                    LC.OUTPUT_SIZE: len(result.messages),
+                    LC.SUCCESS: True,
+                },
+            )
         )
+
         return result
 
 
@@ -282,11 +440,6 @@ class ToolSetNode(ProcessingNode):
     Each execution:
     1. Sends the current State.messages as JSON to `{base_url}/tools/{tool_name}`.
     2. Parses the JSON response into a new State.
-
-    Args:
-        node_id (str): Unique identifier for this node.
-        base_url (str): Base URL of the ToolSetServer (trailing slash is stripped).
-        tool_name (str): Name of the tool (path segment under `/tools`).
     """
 
     httpx = httpx
@@ -295,6 +448,20 @@ class ToolSetNode(ProcessingNode):
         self.base_url = base_url.rstrip("/")
         self.tool_name = tool_name
         action = self._make_tool_action()
+
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="ToolSetNode initialized",
+                **{
+                    LC.EVENT_TYPE: "tool",
+                    LC.NODE_ID: node_id,
+                    LC.NODE_TYPE: "ToolSetNode",
+                    LC.ACTION: "node_created",
+                    LC.CUSTOM: {"tool_name": self.tool_name, "base_url": self.base_url},
+                },
+            )
+        )
+
         super().__init__(node_id, action)
 
     def _make_tool_action(self) -> Callable[[State], State]:
@@ -305,16 +472,44 @@ class ToolSetNode(ProcessingNode):
 
         @node_action
         async def _action(state: State) -> State:
-            logging.info(f"node=toolset event=start node_id={self.node_id} url={url}")
+            log = GraphLogger.get()
+
+            log.info(
+                **wrap_constants(
+                    message="ToolSetNode HTTP request started",
+                    **{
+                        LC.EVENT_TYPE: "tool",
+                        LC.NODE_ID: self.node_id,
+                        LC.NODE_TYPE: "ToolSetNode",
+                        LC.ACTION: "tool_http_start",
+                        LC.INPUT_SIZE: len(state.messages),
+                        LC.CUSTOM: {"url": url},
+                    },
+                )
+            )
+
             payload = {"messages": state.messages}
             async with httpx.AsyncClient() as client:
                 resp = await client.post(url, json=payload, timeout=10.0)
                 resp.raise_for_status()
                 data = resp.json()
                 new_state = State(messages=data.get("messages", []))
-                logging.info(
-                    f"node=toolset event=success node_id={self.node_id} messages={len(new_state.messages)}"
+
+                log.info(
+                    **wrap_constants(
+                        message="ToolSetNode HTTP call succeeded",
+                        **{
+                            LC.EVENT_TYPE: "tool",
+                            LC.NODE_ID: self.node_id,
+                            LC.NODE_TYPE: "ToolSetNode",
+                            LC.ACTION: "tool_http_success",
+                            LC.OUTPUT_SIZE: len(new_state.messages),
+                            LC.SUCCESS: True,
+                            LC.CUSTOM: {"url": url, "status_code": resp.status_code},
+                        },
+                    )
                 )
+
                 return new_state
 
         return _action

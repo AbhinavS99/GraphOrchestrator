@@ -1,2 +1,9 @@
 [run]
 source = graphorchestrator
+
+[report]
+omit =
+    graphorchestrator/core/logger.py
+    graphorchestrator/core/log_utils.py
+    graphorchestrator/core/log_context.py
+    graphorchestrator/core/log_constants.py

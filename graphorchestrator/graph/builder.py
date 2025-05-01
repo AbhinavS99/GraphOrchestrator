@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 from graphorchestrator.core.retry import RetryPolicy
 from graphorchestrator.core.state import State
@@ -14,59 +14,273 @@ from graphorchestrator.edges.concrete import ConcreteEdge
 from graphorchestrator.edges.conditional import ConditionalEdge
 from graphorchestrator.graph.graph import Graph
 from graphorchestrator.decorators.builtin_actions import passThrough
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class GraphBuilder:
-    def __init__(self):
-        logging.info("graph=builder event=init")
+    def __init__(self, name: Optional[str] = "graph"):
+        GraphLogger.get().info(
+            **wrap_constants(
+                message="GraphBuilder initialized",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "builder_init",
+                    LC.CUSTOM: {"graph_name": name},
+                }
+            )
+        )
+
         start_node = ProcessingNode("start", passThrough)
         end_node = ProcessingNode("end", passThrough)
-        self.graph = Graph(start_node, end_node)
+        self.graph = Graph(start_node, end_node, name)
         self.add_node(start_node)
         self.add_node(end_node)
 
     def add_node(self, node):
-        logging.debug(f"graph=builder event=add_node node_id={node.node_id}")
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to add node to graph",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "add_node_attempt",
+                    LC.NODE_ID: node.node_id,
+                }
+            )
+        )
+
         if node.node_id in self.graph.nodes:
-            logging.error(f"graph=builder event=duplicate_node node_id={node.node_id}")
+            log.error(
+                **wrap_constants(
+                    message="Duplicate node detected",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "duplicate_node",
+                        LC.NODE_ID: node.node_id,
+                    }
+                )
+            )
             raise DuplicateNodeError(node.node_id)
+
         self.graph.nodes[node.node_id] = node
-        logging.info(f"graph=builder event=node_added node_id={node.node_id}")
+
+        log.info(
+            **wrap_constants(
+                message="Node successfully added to graph",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "node_added",
+                    LC.NODE_ID: node.node_id,
+                    LC.NODE_TYPE: node.__class__.__name__,
+                }
+            )
+        )
 
     def set_fallback_node(self, node_id: str, fallback_node_id: str):
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to set fallback node",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "set_fallback_attempt",
+                    LC.NODE_ID: node_id,
+                    LC.FALLBACK_NODE: fallback_node_id,
+                }
+            )
+        )
+
         if node_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Primary node not found for fallback assignment",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "fallback_assignment_failed",
+                        LC.NODE_ID: node_id,
+                        LC.FALLBACK_NODE: fallback_node_id,
+                        LC.CUSTOM: {"reason": "node_id does not exist"},
+                    }
+                )
+            )
             raise NodeNotFoundError(node_id)
+
         if fallback_node_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Fallback node not found in graph",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "fallback_assignment_failed",
+                        LC.NODE_ID: node_id,
+                        LC.FALLBACK_NODE: fallback_node_id,
+                        LC.CUSTOM: {"reason": "fallback_node_id does not exist"},
+                    }
+                )
+            )
             raise NodeNotFoundError(fallback_node_id)
+
         self.graph.nodes[node_id].set_fallback(fallback_node_id)
-        logging.debug(
-            f"graph=builder event=set_fallback_node node={node_id} fallback={fallback_node_id}"
+
+        log.info(
+            **wrap_constants(
+                message="Fallback node set successfully",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "fallback_assigned",
+                    LC.NODE_ID: node_id,
+                    LC.FALLBACK_NODE: fallback_node_id,
+                }
+            )
         )
 
     def set_node_retry_policy(self, node_id: str, retry_policy: RetryPolicy) -> None:
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to set retry policy for node",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "set_retry_policy_attempt",
+                    LC.NODE_ID: node_id,
+                    LC.CUSTOM: {
+                        "max_retries": retry_policy.max_retries,
+                        "delay": retry_policy.delay,
+                        "backoff": retry_policy.backoff,
+                    },
+                }
+            )
+        )
+
         if node_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Cannot set retry policy — node not found",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "set_retry_policy_failed",
+                        LC.NODE_ID: node_id,
+                        LC.CUSTOM: {"reason": "node_id does not exist"},
+                    }
+                )
+            )
             raise NodeNotFoundError(node_id)
+
         self.graph.nodes[node_id].set_retry_policy(retry_policy)
-        logging.debug(
-            f"graph=builder event=set_node_retry_policy node={node_id} retry_policy={str(retry_policy)}"
+
+        log.info(
+            **wrap_constants(
+                message="Retry policy set successfully",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "retry_policy_assigned",
+                    LC.NODE_ID: node_id,
+                    LC.CUSTOM: {
+                        "max_retries": retry_policy.max_retries,
+                        "delay": retry_policy.delay,
+                        "backoff": retry_policy.backoff,
+                    },
+                }
+            )
         )
 
     def add_aggregator(self, aggregator: AggregatorNode):
-        logging.debug(
-            f"graph=builder event=add_aggregator node_id={aggregator.node_id}"
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to add aggregator node to graph",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "add_aggregator_attempt",
+                    LC.NODE_ID: aggregator.node_id,
+                    LC.NODE_TYPE: "AggregatorNode",
+                }
+            )
         )
-        self.add_node(aggregator)
+
+        if aggregator.node_id in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Duplicate aggregator node detected",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "duplicate_node",
+                        LC.NODE_ID: aggregator.node_id,
+                        LC.NODE_TYPE: "AggregatorNode",
+                    }
+                )
+            )
+            raise DuplicateNodeError(aggregator.node_id)
+
+        self.graph.nodes[aggregator.node_id] = aggregator
+
+        log.info(
+            **wrap_constants(
+                message="Aggregator node registered in graph",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "aggregator_registered",
+                    LC.NODE_ID: aggregator.node_id,
+                    LC.NODE_TYPE: "AggregatorNode",
+                }
+            )
+        )
 
     def add_concrete_edge(self, source_id: str, sink_id: str):
-        logging.debug(
-            f"graph=builder event=add_concrete_edge source={source_id} sink={sink_id}"
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to add concrete edge",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "add_concrete_edge_attempt",
+                    LC.SOURCE_NODE: source_id,
+                    LC.SINK_NODE: sink_id,
+                    LC.EDGE_TYPE: "concrete",
+                }
+            )
         )
+
         if source_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Concrete edge source node not found",
+                    **{
+                        LC.EVENT_TYPE: "edge",
+                        LC.ACTION: "add_concrete_edge_failed",
+                        LC.SOURCE_NODE: source_id,
+                        LC.SINK_NODE: sink_id,
+                        LC.CUSTOM: {"reason": "source_id not in graph"},
+                    }
+                )
+            )
             raise NodeNotFoundError(source_id)
+
         if source_id == "end":
             raise GraphConfigurationError("End cannot be the source of a concrete edge")
+
         if sink_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Concrete edge sink node not found",
+                    **{
+                        LC.EVENT_TYPE: "edge",
+                        LC.ACTION: "add_concrete_edge_failed",
+                        LC.SOURCE_NODE: source_id,
+                        LC.SINK_NODE: sink_id,
+                        LC.CUSTOM: {"reason": "sink_id not in graph"},
+                    }
+                )
+            )
             raise NodeNotFoundError(sink_id)
+
         if sink_id == "start":
             raise GraphConfigurationError("Start cannot be a sink of concrete edge")
 
@@ -75,15 +289,31 @@ class GraphBuilder:
 
         for edge in self.graph.concrete_edges:
             if edge.source == source and edge.sink == sink:
-                logging.error(
-                    f"graph=builder event=duplicate_edge source={source_id} sink={sink_id}"
+                log.error(
+                    **wrap_constants(
+                        message="Duplicate concrete edge detected",
+                        **{
+                            LC.EVENT_TYPE: "edge",
+                            LC.ACTION: "duplicate_edge",
+                            LC.SOURCE_NODE: source_id,
+                            LC.SINK_NODE: sink_id,
+                        }
+                    )
                 )
                 raise EdgeExistsError(source_id, sink_id)
 
         for cond_edge in self.graph.conditional_edges:
             if cond_edge.source == source and sink in cond_edge.sinks:
-                logging.error(
-                    f"graph=builder event=conflict_with_conditional_edge source={source_id} sink={sink_id}"
+                log.error(
+                    **wrap_constants(
+                        message="Edge conflicts with existing conditional edge",
+                        **{
+                            LC.EVENT_TYPE: "edge",
+                            LC.ACTION: "conflict_with_conditional_edge",
+                            LC.SOURCE_NODE: source_id,
+                            LC.SINK_NODE: sink_id,
+                        }
+                    )
                 )
                 raise EdgeExistsError(source_id, sink_id)
 
@@ -91,18 +321,54 @@ class GraphBuilder:
         self.graph.concrete_edges.append(edge)
         source.outgoing_edges.append(edge)
         sink.incoming_edges.append(edge)
-        logging.info(
-            f"graph=builder event=concrete_edge_added source={source_id} sink={sink_id}"
+
+        log.info(
+            **wrap_constants(
+                message="Concrete edge successfully added",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "concrete_edge_added",
+                    LC.SOURCE_NODE: source_id,
+                    LC.SINK_NODE: sink_id,
+                    LC.EDGE_TYPE: "concrete",
+                }
+            )
         )
 
     def add_conditional_edge(
         self, source_id: str, sink_ids: List[str], router: Callable[[State], str]
     ):
-        logging.debug(
-            f"graph=builder event=add_conditional_edge source={source_id} sinks={sink_ids} router={router.__name__}"
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Attempting to add conditional edge",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "add_conditional_edge_attempt",
+                    LC.SOURCE_NODE: source_id,
+                    LC.SINK_NODE: sink_ids,
+                    LC.EDGE_TYPE: "conditional",
+                    LC.ROUTER_FUNC: router.__name__,
+                }
+            )
         )
+
         if source_id not in self.graph.nodes:
+            log.error(
+                **wrap_constants(
+                    message="Conditional edge source node not found",
+                    **{
+                        LC.EVENT_TYPE: "edge",
+                        LC.ACTION: "add_conditional_edge_failed",
+                        LC.SOURCE_NODE: source_id,
+                        LC.SINK_NODE: sink_ids,
+                        LC.CUSTOM: {"reason": "source_id not in graph"},
+                    }
+                )
+            )
             raise NodeNotFoundError(source_id)
+
         if source_id == "end":
             raise GraphConfigurationError(
                 "End cannot be the source of a conditional edge"
@@ -110,19 +376,42 @@ class GraphBuilder:
 
         source = self.graph.nodes[source_id]
         sinks = []
+
         for sink_id in sink_ids:
             if sink_id not in self.graph.nodes:
+                log.error(
+                    **wrap_constants(
+                        message="Conditional edge sink node not found",
+                        **{
+                            LC.EVENT_TYPE: "edge",
+                            LC.ACTION: "add_conditional_edge_failed",
+                            LC.SOURCE_NODE: source_id,
+                            LC.SINK_NODE: sink_id,
+                            LC.CUSTOM: {"reason": "sink_id not in graph"},
+                        }
+                    )
+                )
                 raise NodeNotFoundError(sink_id)
+
             if sink_id == "start":
                 raise GraphConfigurationError(
                     "Start cannot be a sink of conditional edge"
                 )
+
             sinks.append(self.graph.nodes[sink_id])
 
         for edge in self.graph.concrete_edges:
             if edge.source == source and edge.sink in sinks:
-                logging.error(
-                    f"graph=builder event=conflict_with_concrete_edge source={source_id} sink={edge.sink.node_id}"
+                log.error(
+                    **wrap_constants(
+                        message="Conflict with existing concrete edge",
+                        **{
+                            LC.EVENT_TYPE: "edge",
+                            LC.ACTION: "conflict_with_concrete_edge",
+                            LC.SOURCE_NODE: source_id,
+                            LC.SINK_NODE: edge.sink.node_id,
+                        }
+                    )
                 )
                 raise EdgeExistsError(source_id, edge.sink.node_id)
 
@@ -130,8 +419,16 @@ class GraphBuilder:
             if cond_edge.source == source:
                 for s in sinks:
                     if s in cond_edge.sinks:
-                        logging.error(
-                            f"graph=builder event=duplicate_conditional_branch source={source_id} sink={s.node_id}"
+                        log.error(
+                            **wrap_constants(
+                                message="Duplicate conditional edge branch detected",
+                                **{
+                                    LC.EVENT_TYPE: "edge",
+                                    LC.ACTION: "duplicate_conditional_branch",
+                                    LC.SOURCE_NODE: source_id,
+                                    LC.SINK_NODE: s.node_id,
+                                }
+                            )
                         )
                         raise EdgeExistsError(source_id, s.node_id)
 
@@ -140,22 +437,93 @@ class GraphBuilder:
         source.outgoing_edges.append(edge)
         for sink in sinks:
             sink.incoming_edges.append(edge)
-        logging.info(
-            f"graph=builder event=conditional_edge_added source={source_id} sinks={[s.node_id for s in sinks]}"
+
+        log.info(
+            **wrap_constants(
+                message="Conditional edge successfully added",
+                **{
+                    LC.EVENT_TYPE: "edge",
+                    LC.ACTION: "conditional_edge_added",
+                    LC.SOURCE_NODE: source_id,
+                    LC.SINK_NODE: [s.node_id for s in sinks],
+                    LC.EDGE_TYPE: "conditional",
+                    LC.ROUTER_FUNC: router.__name__,
+                }
+            )
         )
 
     def build_graph(self) -> Graph:
-        logging.debug("graph=builder event=build_graph status=validating")
+        log = GraphLogger.get()
+
+        log.debug(
+            **wrap_constants(
+                message="Validating graph before build",
+                **{LC.EVENT_TYPE: "graph", LC.ACTION: "build_graph_validation_start"}
+            )
+        )
+
         start_node = self.graph.start_node
+
         if any(isinstance(e, ConditionalEdge) for e in start_node.outgoing_edges):
+            log.error(
+                **wrap_constants(
+                    message="Start node has a conditional edge — invalid graph",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "build_graph_failed",
+                        LC.CUSTOM: {"reason": "start node has conditional edge"},
+                    }
+                )
+            )
             raise GraphConfigurationError("Start node cannot have a conditional edge")
+
         if not any(isinstance(e, ConcreteEdge) for e in start_node.outgoing_edges):
+            log.error(
+                **wrap_constants(
+                    message="Start node missing concrete edge — invalid graph",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "build_graph_failed",
+                        LC.CUSTOM: {
+                            "reason": "start node must have at least one concrete edge"
+                        },
+                    }
+                )
+            )
             raise GraphConfigurationError(
                 "Start node must have at least one outgoing concrete edge"
             )
+
         if not self.graph.end_node.incoming_edges:
+            log.error(
+                **wrap_constants(
+                    message="End node has no incoming edges — invalid graph",
+                    **{
+                        LC.EVENT_TYPE: "graph",
+                        LC.ACTION: "build_graph_failed",
+                        LC.CUSTOM: {
+                            "reason": "end node must have at least one incoming edge"
+                        },
+                    }
+                )
+            )
             raise GraphConfigurationError(
                 "End node must have at least one incoming edge"
             )
-        logging.info("graph=builder event=graph_built status=success")
+
+        log.info(
+            **wrap_constants(
+                message="Graph successfully built",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "graph_built",
+                    LC.CUSTOM: {
+                        "node_count": len(self.graph.nodes),
+                        "concrete_edges": len(self.graph.concrete_edges),
+                        "conditional_edges": len(self.graph.conditional_edges),
+                    },
+                }
+            )
+        )
+
         return self.graph

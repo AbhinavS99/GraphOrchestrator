@@ -2,6 +2,9 @@ from enum import Enum
 from typing import Dict, List
 
 from graphorchestrator.graph.graph import Graph
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class RepresentationalEdgeType(Enum):
@@ -42,7 +45,25 @@ class RepresentationalGraph:
 
     @staticmethod
     def from_graph(graph: Graph) -> "RepresentationalGraph":
+        log = GraphLogger.get()
+
+        log.info(
+            **wrap_constants(
+                message="Building representational graph from Graph instance",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "build_representational_graph",
+                    LC.CUSTOM: {
+                        "node_count": len(graph.nodes),
+                        "concrete_edge_count": len(graph.concrete_edges),
+                        "conditional_edge_count": len(graph.conditional_edges),
+                    },
+                },
+            )
+        )
+
         rep_graph = RepresentationalGraph()
+
         for node_id, node in graph.nodes.items():
             if hasattr(node, "func"):
                 node_type = "processing"
@@ -50,6 +71,7 @@ class RepresentationalGraph:
                 node_type = "aggregator"
             else:
                 node_type = "node"
+
             rep_node = RepresentationalNode(node_id, node_type)
             rep_graph.nodes[node_id] = rep_node
 
@@ -73,5 +95,19 @@ class RepresentationalGraph:
                 rep_graph.edges.append(rep_edge)
                 src.outgoing_edges.append(rep_edge)
                 sink.incoming_edges.append(rep_edge)
+
+        log.info(
+            **wrap_constants(
+                message="Representational graph build completed",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "representational_graph_built",
+                    LC.CUSTOM: {
+                        "representational_nodes": len(rep_graph.nodes),
+                        "representational_edges": len(rep_graph.edges),
+                    },
+                },
+            )
+        )
 
         return rep_graph

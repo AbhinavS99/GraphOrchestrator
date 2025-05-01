@@ -1,8 +1,13 @@
 import pickle
 from typing import Dict, List, Optional
+
 from graphorchestrator.core.state import State
 from graphorchestrator.graph.graph import Graph
 from graphorchestrator.core.retry import RetryPolicy
+
+from graphorchestrator.core.logger import GraphLogger
+from graphorchestrator.core.log_utils import wrap_constants
+from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class CheckpointData:
@@ -25,10 +30,48 @@ class CheckpointData:
         self.max_workers = max_workers
 
     def save(self, path: str):
+        log = GraphLogger.get()
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
+        log.info(
+            **wrap_constants(
+                message="Checkpoint saved to disk",
+                level="INFO",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "checkpoint_save",
+                    LC.SUPERSTEP: self.superstep,
+                    LC.CUSTOM: {
+                        "path": path,
+                        "final_state_message_count": (
+                            len(self.final_state.messages) if self.final_state else None
+                        ),
+                        "active_nodes": list(self.active_states.keys()),
+                    },
+                }
+            )
+        )
+
     @staticmethod
     def load(path: str) -> "CheckpointData":
+        log = GraphLogger.get()
         with open(path, "rb") as f:
-            return pickle.load(f)
+            data: CheckpointData = pickle.load(f)
+
+        log.info(
+            **wrap_constants(
+                message="Checkpoint loaded from disk",
+                level="INFO",
+                **{
+                    LC.EVENT_TYPE: "graph",
+                    LC.ACTION: "checkpoint_load",
+                    LC.SUPERSTEP: data.superstep,
+                    LC.CUSTOM: {
+                        "path": path,
+                        "active_nodes": list(data.active_states.keys()),
+                    },
+                }
+            )
+        )
+        return data
