@@ -1,0 +1,67 @@
+name: Publish to PyPI 🚀
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Needed for GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # So tags are available
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Ensure matching 'ready-*' tag is present on current branch HEAD
+        run: |
+          git fetch --tags
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          TAG="ready-${CURRENT_BRANCH}"
+          echo "🔍 Checking for tag: $TAG on branch: $CURRENT_BRANCH"
+
+          TAG_MATCH=$(git tag --points-at HEAD | grep "^$TAG$" || true)
+          if [[ -z "$TAG_MATCH" ]]; then
+            echo "❌ Required tag '$TAG' not found on current HEAD."
+            echo "To approve this release, run:"
+            echo "   git tag $TAG && git push origin $TAG"
+            exit 1
+          fi
+          echo "✅ Tag $TAG found. Proceeding with release."
+
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: Release v${{ github.event.inputs.version }}
+          body: |
+            📦 PyPI release approved and uploaded.
+            - Branch: `${{ github.ref_name }}`
+            - Triggered by: `${{ github.actor }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
