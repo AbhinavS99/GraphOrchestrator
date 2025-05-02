@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/AbhinavS99/GraphOrchestrator/main/docs/logo.png" alt="GraphOrchestrator Logo" width="300"/>
+  <img src="https://raw.githubusercontent.com/AbhinavS99/GraphOrchestrator/main/logo/logo.png" alt="GraphOrchestrator Logo" width="300"/>
 </p>
 
 <h1 align="center">GraphOrchestrator</h1>
