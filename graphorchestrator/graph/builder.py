@@ -20,6 +20,14 @@ from graphorchestrator.core.log_constants import LogConstants as LC
 
 
 class GraphBuilder:
+    """
+    GraphBuilder is a utility class for constructing complex directed graphs.
+
+    It supports adding various types of nodes (ProcessingNode, AggregatorNode) and
+    edges (ConcreteEdge, ConditionalEdge) to define the flow and logic of a
+    processing pipeline. It also handles error handling and logging.
+    """
+
     def __init__(self, name: Optional[str] = "graph"):
         GraphLogger.get().info(
             **wrap_constants(
@@ -39,6 +47,14 @@ class GraphBuilder:
         self.add_node(end_node)
 
     def add_node(self, node):
+        """
+        Adds a node to the graph.
+
+        Args:
+            node: The node to be added.
+        Raises:
+             DuplicateNodeError: if there is already a node with the same id in the graph.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -80,6 +96,18 @@ class GraphBuilder:
         )
 
     def set_fallback_node(self, node_id: str, fallback_node_id: str):
+        """
+        Sets a fallback node for a given node.
+
+        In case of failure of the node, the graph will execute the fallback node.
+
+        Args:
+            node_id: The ID of the node for which to set a fallback.
+            fallback_node_id: The ID of the fallback node.
+
+        Raises:
+            NodeNotFoundError: if the node or fallback node does not exist in the graph.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -139,6 +167,17 @@ class GraphBuilder:
         )
 
     def set_node_retry_policy(self, node_id: str, retry_policy: RetryPolicy) -> None:
+        """
+        Sets a retry policy for a given node.
+
+        The node will retry upon failure as per the given policy.
+
+        Args:
+            node_id: The ID of the node for which to set the retry policy.
+            retry_policy: The retry policy to set.
+        Raises:
+            NodeNotFoundError: if the node does not exist in the graph.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -190,6 +229,14 @@ class GraphBuilder:
         )
 
     def add_aggregator(self, aggregator: AggregatorNode):
+        """
+        Adds an aggregator node to the graph.
+
+        Args:
+            aggregator: The aggregator node to add.
+        Raises:
+             DuplicateNodeError: if there is already a node with the same id in the graph.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -233,6 +280,17 @@ class GraphBuilder:
         )
 
     def add_concrete_edge(self, source_id: str, sink_id: str):
+        """
+        Adds a concrete edge between two nodes.
+
+        Args:
+            source_id: The ID of the source node.
+            sink_id: The ID of the sink node.
+
+        Raises:
+            NodeNotFoundError: if the source or sink node does not exist in the graph.
+            EdgeExistsError: if an edge already exists between the source and sink.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -338,6 +396,19 @@ class GraphBuilder:
     def add_conditional_edge(
         self, source_id: str, sink_ids: List[str], router: Callable[[State], str]
     ):
+        """
+        Adds a conditional edge between a source node and multiple sink nodes,
+        using a router function to determine the sink based on the state.
+
+        Args:
+            source_id: The ID of the source node.
+            sink_ids: A list of IDs of the possible sink nodes.
+            router: A function that takes a State object and returns the ID of the
+                    chosen sink node.
+
+        Raises:
+            NodeNotFoundError: if the source or sink node does not exist in the graph.
+        """
         log = GraphLogger.get()
 
         log.debug(
@@ -453,6 +524,16 @@ class GraphBuilder:
         )
 
     def build_graph(self) -> Graph:
+        """
+        Builds and validates the graph.
+
+        Performs a validation of the graph prior to build.
+
+        Returns:
+            The constructed Graph object.
+        Raises:
+            GraphConfigurationError: if the configuration of the graph is not valid.
+        """
         log = GraphLogger.get()
 
         log.debug(

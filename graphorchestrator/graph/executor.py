@@ -20,6 +20,21 @@ from graphorchestrator.core.log_context import LogContext
 
 
 class GraphExecutor:
+    """
+    GraphExecutor is responsible for executing a graph by iterating over its nodes in supersteps.
+    It manages the execution flow, retry policies, checkpointing, and fallback mechanisms.
+
+    Attributes:
+        graph: The graph to execute.
+        initial_state: The initial state of the graph execution.
+        max_workers: The maximum number of concurrent node executions.
+        retry_policy: The retry policy for node executions.
+        checkpoint_path: The path to save/load checkpoints.
+        checkpoint_every: The frequency (in supersteps) to save checkpoints.
+        allow_fallback_from_checkpoint: Whether to fallback to the last checkpoint in case of timeout.
+        active_states: The states of the active nodes in the current superstep.
+        final_state: The final state of the execution, when the graph is fully executed.
+    """
     def __init__(
         self,
         graph,
@@ -30,6 +45,18 @@ class GraphExecutor:
         checkpoint_every: Optional[int] = None,
         allow_fallback_from_checkpoint: bool = False,
     ) -> None:
+        """
+        Initializes the GraphExecutor with the given parameters.
+
+        Args:
+            graph: The graph to execute.
+            initial_state: The initial state of the graph execution.
+            max_workers: The maximum number of concurrent node executions. Defaults to 4.
+            retry_policy: The retry policy for node executions. Defaults to no retries.
+            checkpoint_path: The path to save/load checkpoints. Defaults to None.
+            checkpoint_every: The frequency (in supersteps) to save checkpoints. Defaults to None.
+            allow_fallback_from_checkpoint: Whether to fallback to the last checkpoint in case of timeout. Defaults to False.
+        """
         LogContext.set(
             {
                 LC.RUN_ID: str(uuid.uuid4()),
@@ -97,6 +124,12 @@ class GraphExecutor:
             )
 
     def to_checkpoint(self) -> CheckpointData:
+        """
+        Creates a CheckpointData object representing the current state of the graph execution.
+
+        Returns:
+            A CheckpointData object.
+        """
         log = GraphLogger.get()
 
         log.info(
@@ -139,6 +172,18 @@ class GraphExecutor:
         checkpoint_path: Optional[str] = None,
         checkpoint_every: Optional[int] = None,
     ):
+        """
+        Creates a GraphExecutor object from a CheckpointData object.
+
+        Args:
+            chkpt: The CheckpointData object to restore from.
+            checkpoint_path: The path to save/load checkpoints. Defaults to None.
+            checkpoint_every: The frequency (in supersteps) to save checkpoints. Defaults to None.
+
+        Returns:
+            A GraphExecutor object restored from the checkpoint.
+
+        """
         log = GraphLogger.get()
 
         log.info(
@@ -179,6 +224,18 @@ class GraphExecutor:
     async def _execute_node_with_retry_async(
         self, node, input_data, retry_policy
     ) -> None:
+        """
+        Executes a node with the given input data, applying the retry policy.
+        This method is async and uses a semaphore to limit concurrency.
+
+        Args:
+            node: The node to execute.
+            input_data: The input data for the node.
+            retry_policy: The retry policy to apply.
+
+        Raises:
+            Exception: If the node execution fails after all retries.
+        """
         log = GraphLogger.get()
 
         retry_policy = (
@@ -245,6 +302,18 @@ class GraphExecutor:
     async def execute(
         self, max_supersteps: int = 100, superstep_timeout: float = 300.0
     ) -> Optional[State]:
+        """
+        Executes the graph up to a maximum number of supersteps.
+
+        Args:
+            max_supersteps: The maximum number of supersteps to execute. Defaults to 100.
+            superstep_timeout: The timeout (in seconds) for each superstep. Defaults to 300.0.
+
+        Returns:
+            The final state of the execution, if the graph completed successfully.
+        Raises:
+             GraphExecutionError: if the max_supersteps are reach or any error is encountered in the flow
+        """
         log = GraphLogger.get()
 
         log.info(
