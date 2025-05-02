@@ -56,7 +56,21 @@ class Node(ABC):
         raise NotImplementedError
 
     def set_fallback(self, fallback_node_id: str) -> None:
+        """
+        Sets the fallback node ID for this node.
+
+        Args:
+            fallback_node_id (str): The ID of the fallback node.
+        """
         self.fallback_node_id = fallback_node_id
 
     def set_retry_policy(self, retry_policy: RetryPolicy) -> None:
+        """
+        Sets the retry policy for this node.
+
+        Args:
+            retry_policy (RetryPolicy): The retry policy to apply.
+        """
         self.retry_policy = retry_policy
+
+

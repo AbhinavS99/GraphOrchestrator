@@ -21,7 +21,21 @@ class ConditionalEdge(Edge):
     def __init__(
         self, source: Node, sinks: List[Node], router: Callable[[State], str]
     ) -> None:
-        """Initializes a ConditionalEdge with a source, multiple sinks, and a router function."""
+        """
+        Initializes a ConditionalEdge.
+
+        Args:
+            source (Node): The source node of the edge.
+            sinks (List[Node]): A list of sink nodes.
+            router (Callable[[State], str]): A routing function that takes a State object and returns
+                the ID of the sink node to which the edge should route.
+
+        Raises:
+            RoutingFunctionNotDecoratedError: If the router function is not decorated with
+                @routing_function.
+
+        """
+
         self.source = source
         self.sinks = sinks
 
