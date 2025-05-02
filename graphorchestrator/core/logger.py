@@ -5,6 +5,7 @@ from typing import Optional, Any
 from graphorchestrator.core.log_utils import wrap_constants
 from graphorchestrator.core.log_constants import LogConstants as LC
 
+
 class NullGraphLogger:
     """
     A no-op logger used when GraphLogger is not initialized.

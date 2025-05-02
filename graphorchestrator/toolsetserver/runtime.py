@@ -31,6 +31,7 @@ class _ToolSetMeta(type):
 
     It automatically scans methods of the ToolSetServer for those marked as 'tool_method' and creates corresponding API routes.
     """
+
     def __new__(mcls, name, bases, ns):
         cls = super().__new__(mcls, name, bases, ns)
         cls._fastapi = FastAPI(title=getattr(cls, "name", name))
@@ -73,6 +74,7 @@ class _ToolSetMeta(type):
             Raises:
                 HTTPException: If an error occurs during tool execution.
             """
+
             async def endpoint(payload: StateModel, _=Depends(_check)):
                 log = GraphLogger.get()
                 state_in = State(messages=payload.messages)
@@ -167,6 +169,7 @@ class ToolSetServer(metaclass=_ToolSetMeta):
 
     This class handles the creation of FastAPI endpoints for registered tool methods.
     """
+
     host: str = "127.0.0.1"
     port: int = 8000
     name: str = "ToolSet"

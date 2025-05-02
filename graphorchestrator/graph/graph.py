@@ -41,7 +41,6 @@ class Graph:
         if not isinstance(start_node, Node) or not isinstance(end_node, Node):
             raise TypeError("start_node and end_node must be of type Node")
 
-        
         self.concrete_edges: List[ConcreteEdge] = []
         self.conditional_edges: List[ConditionalEdge] = []
         self.start_node = start_node

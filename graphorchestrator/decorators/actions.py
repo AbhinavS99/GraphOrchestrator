@@ -10,7 +10,9 @@ from graphorchestrator.core.exceptions import (
     InvalidAggregatorActionError,
 )
 from graphorchestrator.core.logger import GraphLogger
-from graphorchestrator.core.log_utils import wrap_constants  # Function to wrap constants for logging
+from graphorchestrator.core.log_utils import (
+    wrap_constants,
+)  # Function to wrap constants for logging
 from graphorchestrator.core.log_constants import LogConstants as LC
 
 
@@ -20,6 +22,7 @@ def routing_function(func: Callable[[State], str]) -> Callable[[State], str]:
     Decorator for functions that route the flow of the graph.
     These functions must take a State and return a string.
     """
+
     @wraps(func)
     async def wrapper(state: State) -> str:
         # Get the logger
@@ -74,6 +77,7 @@ def node_action(func: Callable[[State], State]) -> Callable[[State], State]:
     Decorator for functions that are node actions.
     These functions must take a State and return a State.
     """
+
     @wraps(func)
     async def wrapper(state: State) -> State:
         # Get the logger
@@ -127,6 +131,7 @@ def tool_method(func: Callable[[State], State]) -> Callable[[State], State]:
     Decorator for functions that are tool methods.
     These functions must take a State and return a State.
     """
+
     @wraps(func)
     async def wrapper(state: State) -> State:
         # Get the logger
@@ -183,6 +188,7 @@ def aggregator_action(
     Decorator for functions that are aggregator actions.
     These functions must take a list of States and return a State.
     """
+
     @wraps(func)
     async def wrapper(states: List[State]) -> State:
         # Get the logger

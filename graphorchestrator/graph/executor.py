@@ -35,6 +35,7 @@ class GraphExecutor:
         active_states: The states of the active nodes in the current superstep.
         final_state: The final state of the execution, when the graph is fully executed.
     """
+
     def __init__(
         self,
         graph,
