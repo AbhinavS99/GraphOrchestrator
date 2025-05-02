@@ -25,7 +25,9 @@ class LogContext:
     @staticmethod
     def get() -> Dict[str, Any]:
         """Returns the current execution context."""
-        return _log_context.get()  # Get and return the current context from the context variable.
+        return (
+            _log_context.get()
+        )  # Get and return the current context from the context variable.
 
     @staticmethod
     def clear() -> None:

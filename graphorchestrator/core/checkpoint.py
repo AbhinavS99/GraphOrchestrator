@@ -13,6 +13,7 @@ from graphorchestrator.core.log_constants import LogConstants as LC
 
 class CheckpointData:
     """Represents the data to be checkpointed, including graph state, and execution metadata."""
+
     def __init__(
         self,
         graph: Graph,
@@ -80,7 +81,7 @@ class CheckpointData:
             )
         )
 
-    @staticmethod  
+    @staticmethod
     def load(path: str) -> "CheckpointData":
         """
         Loads checkpoint data from the specified path.

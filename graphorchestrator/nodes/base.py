@@ -72,5 +72,3 @@ class Node(ABC):
             retry_policy (RetryPolicy): The retry policy to apply.
         """
         self.retry_policy = retry_policy
-
-
