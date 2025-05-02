@@ -1,0 +1,2823 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://abhinavs99.github.io/GraphOrchestrator/reference/core/Exceptions/">
+      
+      
+        <link rel="prev" href="../Retry/">
+      
+      
+        <link rel="next" href="../Checkpoint/">
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+    
+    
+      
+        <title>Exceptions - GraphOrchestrator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#graphorchestrator.core.exceptions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="GraphOrchestrator" class="md-header__button md-logo" aria-label="GraphOrchestrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GraphOrchestrator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Exceptions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="GraphOrchestrator" class="md-nav__button md-logo" aria-label="GraphOrchestrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GraphOrchestrator
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../State/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    State
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Retry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retry Policy
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Exceptions
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Exceptions
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      exceptions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.AggregatorActionNotDecorated" class="md-nav__link">
+    <span class="md-ellipsis">
+      AggregatorActionNotDecorated
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.DuplicateNodeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      DuplicateNodeError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.EdgeExistsError" class="md-nav__link">
+    <span class="md-ellipsis">
+      EdgeExistsError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.EmptyToolNodeDescriptionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      EmptyToolNodeDescriptionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphConfigurationError" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphConfigurationError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphExecutionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphExecutionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphOrchestratorException" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphOrchestratorException
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidAIActionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidAIActionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidAggregatorActionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidAggregatorActionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidNodeActionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidNodeActionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidRoutingFunctionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidRoutingFunctionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidToolMethodOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidToolMethodOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.NodeActionNotDecoratedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodeActionNotDecoratedError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.NodeNotFoundError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodeNotFoundError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.RoutingFunctionNotDecoratedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      RoutingFunctionNotDecoratedError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.ToolMethodNotDecorated" class="md-nav__link">
+    <span class="md-ellipsis">
+      ToolMethodNotDecorated
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Checkpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Checkpoint
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Nodes
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Nodes
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/Base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Base Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/ProcessingNode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Processing Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/AggregatorNode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Aggregator Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/ToolNode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tool Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/HITLNode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Human In the Loop (HITL) Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/ToolSetNode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ToolSet Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5_7" id="__nav_2_5_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    AI Node
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            AI Node
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/AINode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nodes/AIAction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AIAction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Edges
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Edges
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../edges/Concrete/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Concrete Edge
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../edges/Conditional/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Conditional Edge
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Graph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Graph
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GraphBuilder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphBuilder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GraphExecutor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphExecutor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Visualization
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            Visualization
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../visualization/Representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Representation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../visualization/Visualizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Visualizer
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ToolSetServer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ToolSet Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      exceptions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.AggregatorActionNotDecorated" class="md-nav__link">
+    <span class="md-ellipsis">
+      AggregatorActionNotDecorated
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.DuplicateNodeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      DuplicateNodeError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.EdgeExistsError" class="md-nav__link">
+    <span class="md-ellipsis">
+      EdgeExistsError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.EmptyToolNodeDescriptionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      EmptyToolNodeDescriptionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphConfigurationError" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphConfigurationError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphExecutionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphExecutionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.GraphOrchestratorException" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphOrchestratorException
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidAIActionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidAIActionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidAggregatorActionError" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidAggregatorActionError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidNodeActionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidNodeActionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidRoutingFunctionOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidRoutingFunctionOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.InvalidToolMethodOutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidToolMethodOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.NodeActionNotDecoratedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodeActionNotDecoratedError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.NodeNotFoundError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodeNotFoundError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.RoutingFunctionNotDecoratedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      RoutingFunctionNotDecoratedError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphorchestrator.core.exceptions.ToolMethodNotDecorated" class="md-nav__link">
+    <span class="md-ellipsis">
+      ToolMethodNotDecorated
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+  <h1>Exceptions</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="graphorchestrator.core.exceptions" class="doc doc-heading">
+            <code>graphorchestrator.core.exceptions</code>
+
+
+</h2>
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.AggregatorActionNotDecorated" class="doc doc-heading">
+            <code>AggregatorActionNotDecorated</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when an aggregator action function is not decorated with @aggregator_action.
+It logs an error message with the name of the undecorated function.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">AggregatorActionNotDecorated</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when an aggregator action function is not decorated with @aggregator_action.</span>
+<span class="sd">    It logs an error message with the name of the undecorated function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The function &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; passed to Aggregator must be decorated with @aggregator_action&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;missing_aggregator_decorator&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.DuplicateNodeError" class="doc doc-heading">
+            <code>DuplicateNodeError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a node with a duplicate ID is added to the graph.
+It logs an error message with relevant details.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">DuplicateNodeError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a node with a duplicate ID is added to the graph.</span>
+<span class="sd">    It logs an error message with relevant details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Node with id &#39;</span><span class="si">{</span><span class="n">node_id</span><span class="si">}</span><span class="s2">&#39; already exists.&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;duplicate_node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">NODE_ID</span><span class="p">:</span> <span class="n">node_id</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_id</span> <span class="o">=</span> <span class="n">node_id</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.EdgeExistsError" class="doc doc-heading">
+            <code>EdgeExistsError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when an attempt is made to create a duplicate edge in the graph.
+It logs an error message with information about the source and sink nodes.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">EdgeExistsError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when an attempt is made to create a duplicate edge in the graph.</span>
+<span class="sd">    It logs an error message with information about the source and sink nodes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sink_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Edge from &#39;</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&#39; to &#39;</span><span class="si">{</span><span class="n">sink_id</span><span class="si">}</span><span class="s2">&#39; already exists.&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;duplicate_edge&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">SOURCE_NODE</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">SINK_NODE</span><span class="p">:</span> <span class="n">sink_id</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span> <span class="o">=</span> <span class="n">source_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sink_id</span> <span class="o">=</span> <span class="n">sink_id</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.EmptyToolNodeDescriptionError" class="doc doc-heading">
+            <code>EmptyToolNodeDescriptionError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a tool function lacks a description or docstring.
+It logs an error message indicating the missing description.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">EmptyToolNodeDescriptionError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a tool function lacks a description or docstring.</span>
+<span class="sd">    It logs an error message indicating the missing description.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The tool function &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; has no description or docstring provided&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;missing_description&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.GraphConfigurationError" class="doc doc-heading">
+            <code>GraphConfigurationError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when there's an error in the graph's configuration.
+It logs an error message with the details of the configuration issue.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">GraphConfigurationError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when there&#39;s an error in the graph&#39;s configuration.</span>
+<span class="sd">    It logs an error message with the details of the configuration issue.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Graph configuration error: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;graph_config_error&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">message</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.GraphExecutionError" class="doc doc-heading">
+            <code>GraphExecutionError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when an error occurs during the graph's execution.
+It logs an error message with details about the failed node and the reason.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">GraphExecutionError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when an error occurs during the graph&#39;s execution.</span>
+<span class="sd">    It logs an error message with details about the failed node and the reason.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Execution failed at node &#39;</span><span class="si">{</span><span class="n">node_id</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;execution_failed&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">NODE_ID</span><span class="p">:</span> <span class="n">node_id</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">message</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_id</span> <span class="o">=</span> <span class="n">node_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.GraphOrchestratorException" class="doc doc-heading">
+            <code>GraphOrchestratorException</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="Exception">Exception</span></code></p>
+
+
+        <p>Base exception class for all exceptions raised by the graph orchestrator.
+It serves as the root of the custom exception hierarchy for this project.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">GraphOrchestratorException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base exception class for all exceptions raised by the graph orchestrator.</span>
+<span class="sd">    It serves as the root of the custom exception hierarchy for this project.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.InvalidAIActionOutput" class="doc doc-heading">
+            <code>InvalidAIActionOutput</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when an AI action returns an invalid type.
+It logs an error message with information about the invalid return type.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">InvalidAIActionOutput</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when an AI action returns an invalid type.</span>
+<span class="sd">    It logs an error message with information about the invalid return type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returned_value</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;AI action must return a state, but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;invalid_ai_output&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;returned_type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">))},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.InvalidAggregatorActionError" class="doc doc-heading">
+            <code>InvalidAggregatorActionError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when an aggregator action returns an invalid type.
+It logs an error message with the invalid return type.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">InvalidAggregatorActionError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when an aggregator action returns an invalid type.</span>
+<span class="sd">    It logs an error message with the invalid return type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returned_value</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Aggregator action must return a state, but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;invalid_aggregator_output&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;returned_type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">))},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.InvalidNodeActionOutput" class="doc doc-heading">
+            <code>InvalidNodeActionOutput</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a node's action returns an invalid type.
+It logs an error message with information about the invalid return type.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">InvalidNodeActionOutput</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a node&#39;s action returns an invalid type.</span>
+<span class="sd">    It logs an error message with information about the invalid return type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returned_value</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Node action must return a state, but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">returned_value</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;invalid_node_output&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;returned_type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)),</span>
+                        <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)[:</span><span class="mi">100</span><span class="p">],</span>
+                    <span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.InvalidRoutingFunctionOutput" class="doc doc-heading">
+            <code>InvalidRoutingFunctionOutput</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a routing function returns an invalid type.
+It logs an error message with information about the invalid return type.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">InvalidRoutingFunctionOutput</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a routing function returns an invalid type.</span>
+<span class="sd">    It logs an error message with information about the invalid return type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returned_value</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Routing function must return a string, but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">returned_value</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;invalid_routing_output&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;returned_type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)),</span>
+                        <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)[:</span><span class="mi">100</span><span class="p">],</span>
+                    <span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.InvalidToolMethodOutput" class="doc doc-heading">
+            <code>InvalidToolMethodOutput</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a tool method returns an invalid type.
+It logs an error message with information about the invalid return type.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">InvalidToolMethodOutput</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a tool method returns an invalid type.</span>
+<span class="sd">    It logs an error message with information about the invalid return type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returned_value</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Tool method must return a state, but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">returned_value</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;invalid_tool_output&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;returned_type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)),</span>
+                        <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">returned_value</span><span class="p">)[:</span><span class="mi">100</span><span class="p">],</span>
+                    <span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.NodeActionNotDecoratedError" class="doc doc-heading">
+            <code>NodeActionNotDecoratedError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a node's action function is not decorated with @node_action.
+It logs an error message with the name of the undecorated function.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NodeActionNotDecoratedError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a node&#39;s action function is not decorated with @node_action.</span>
+<span class="sd">    It logs an error message with the name of the undecorated function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The function &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; passed to ProcessingNode must be decorated with @node_action.&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;missing_node_action_decorator&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.NodeNotFoundError" class="doc doc-heading">
+            <code>NodeNotFoundError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a node is not found in the graph.
+It logs an error message with the ID of the missing node.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NodeNotFoundError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a node is not found in the graph.</span>
+<span class="sd">    It logs an error message with the ID of the missing node.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Node &#39;</span><span class="si">{</span><span class="n">node_id</span><span class="si">}</span><span class="s2">&#39; not found in the graph.&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;node_not_found&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">NODE_ID</span><span class="p">:</span> <span class="n">node_id</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_id</span> <span class="o">=</span> <span class="n">node_id</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.RoutingFunctionNotDecoratedError" class="doc doc-heading">
+            <code>RoutingFunctionNotDecoratedError</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a routing function is not decorated with @routing_function.
+It logs an error message with the name of the undecorated function.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">RoutingFunctionNotDecoratedError</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a routing function is not decorated with @routing_function.</span>
+<span class="sd">    It logs an error message with the name of the undecorated function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The function &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; passed to ConditionalEdge must be decorated with @routing_function.&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;missing_routing_function_decorator&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="graphorchestrator.core.exceptions.ToolMethodNotDecorated" class="doc doc-heading">
+            <code>ToolMethodNotDecorated</code>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GraphOrchestratorException (graphorchestrator.core.exceptions.GraphOrchestratorException)" href="#graphorchestrator.core.exceptions.GraphOrchestratorException">GraphOrchestratorException</a></code></p>
+
+
+        <p>Exception raised when a tool method is not decorated with @tool_method.
+It logs an error message with the name of the undecorated method.</p>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>graphorchestrator\core\exceptions.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ToolMethodNotDecorated</span><span class="p">(</span><span class="n">GraphOrchestratorException</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception raised when a tool method is not decorated with @tool_method.</span>
+<span class="sd">    It logs an error message with the name of the undecorated method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The function &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; passed to ToolNode has to be decorated with @tool_method&quot;</span>
+        <span class="n">GraphLogger</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">wrap_constants</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">EVENT_TYPE</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">ACTION</span><span class="p">:</span> <span class="s2">&quot;missing_tool_method_decorator&quot;</span><span class="p">,</span>
+                    <span class="n">LC</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>
