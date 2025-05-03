@@ -14,28 +14,50 @@ class ConditionalEdge(Edge):
     """
     Represents a conditional edge in a graph.
 
-    A ConditionalEdge directs the flow of execution to one of several sink nodes
-    based on the result of a routing function.
+    A `ConditionalEdge` enables dynamic routing of execution from a source node to
+    one of several sink nodes based on a routing function. This function evaluates the
+    current execution `State` and determines the next node by returning a matching node ID.
+
+    Attributes
+    ----------
+    `source` : `Node`
+        The node from which the edge originates.
+    `sinks` : `List[Node]`
+        A list of potential destination nodes.
+    `routing_function` : `Callable[[State], str]`
+        A function that evaluates the state and returns the ID of the next node.
+
+    Examples
+    --------
+    ```python
+    @routing_function
+    def router(state: State) -> str:
+        return "approve" if state.is_valid() else "reject"
+
+    edge = ConditionalEdge(source=node_a, sinks=[approve_node, reject_node], router=router)
+    ```
     """
 
     def __init__(
         self, source: Node, sinks: List[Node], router: Callable[[State], str]
     ) -> None:
         """
-        Initializes a ConditionalEdge.
+        Initializes a `ConditionalEdge` between a source node and multiple sink nodes.
 
-        Args:
-            source (Node): The source node of the edge.
-            sinks (List[Node]): A list of sink nodes.
-            router (Callable[[State], str]): A routing function that takes a State object and returns
-                the ID of the sink node to which the edge should route.
+        Parameters
+        ----------
+        `source` : `Node`
+            The starting point of the edge.
+        `sinks` : `List[Node]`
+            The list of possible destination nodes.
+        `router` : `Callable[[State], str]`
+            A function that returns the node ID of the next step based on the given state.
 
-        Raises:
-            RoutingFunctionNotDecoratedError: If the router function is not decorated with
-                @routing_function.
-
+        Raises
+        ------
+        `RoutingFunctionNotDecoratedError`
+            If the provided routing function is not decorated with `@routing_function`.
         """
-
         self.source = source
         self.sinks = sinks
 
@@ -53,7 +75,7 @@ class ConditionalEdge(Edge):
                     LC.ACTION: "edge_created",
                     LC.EDGE_TYPE: "conditional",
                     LC.SOURCE_NODE: self.source.node_id,
-                    LC.SINK_NODE: sink_ids,  # Using SINK_NODE for consistency; optional to split as LC.SINK_NODES
+                    LC.SINK_NODE: sink_ids,
                     LC.ROUTER_FUNC: router.__name__,
                 }
             )

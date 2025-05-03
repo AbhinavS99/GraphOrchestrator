@@ -1,0 +1,42 @@
+site_name: GraphOrchestrator
+site_url: https://abhinavs99.github.io/GraphOrchestrator/
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google  # or numpy or sphinx based on your style
+            show_root_heading: true
+            show_source: true
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - State: reference/core/State.md
+      - Retry Policy: reference/core/Retry.md
+      - Exceptions: reference/core/Exceptions.md
+      - Checkpoint: reference/core/Checkpoint.md
+      - Nodes:
+        - Base Node: reference/nodes/Base.md
+        - Processing Node: reference/nodes/ProcessingNode.md
+        - Aggregator Node: reference/nodes/AggregatorNode.md
+        - Tool Node: reference/nodes/ToolNode.md
+        - Human In the Loop (HITL) Node: reference/nodes/HITLNode.md
+        - ToolSet Node: reference/nodes/ToolSetNode.md
+        - AI Node:
+          - Overview: reference/nodes/AINode.md
+          - AIAction: reference/nodes/AIAction.md
+      - Edges:
+        - Concrete Edge: reference/edges/Concrete.md
+        - Conditional Edge: reference/edges/Conditional.md
+      - Graph: reference/Graph.md
+      - GraphBuilder: reference/GraphBuilder.md
+      - GraphExecutor: reference/GraphExecutor.md
+      - Visualization:
+        - Representation : reference/visualization/Representation.md
+        - Visualizer : reference/visualization/Visualizer.md
+      - ToolSet Server: reference/ToolSetServer.md

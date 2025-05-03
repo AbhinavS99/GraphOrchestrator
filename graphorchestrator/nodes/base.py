@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from graphorchestrator.core.state import State
 from graphorchestrator.core.retry import RetryPolicy
 from graphorchestrator.core.logger import GraphLogger
 from graphorchestrator.core.log_utils import wrap_constants
@@ -46,7 +47,7 @@ class Node(ABC):
         )
 
     @abstractmethod
-    def execute(self, state):
+    def execute(self, state: State):
         """
         Abstract method to execute the node's logic.
 
