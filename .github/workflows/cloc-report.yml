@@ -20,7 +20,7 @@ jobs:
           cat cloc-report.txt
 
       - name: Upload cloc report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # 🔄 Updated from v3 to v4
         with:
           name: cloc-report
           path: cloc-report.txt
