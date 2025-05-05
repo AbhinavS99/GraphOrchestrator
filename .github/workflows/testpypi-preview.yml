@@ -1,7 +1,7 @@
 name: TestPyPI Preview 🧪
 
 on:
-  push:
+  create:
     branches:
      - 'releases/release_*'
 
