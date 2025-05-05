@@ -3,6 +3,10 @@ name: Count Lines of Code (CLOC)
 on:
   workflow_dispatch:  # Allows manual trigger from GitHub UI
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   run-cloc:
     runs-on: ubuntu-latest
