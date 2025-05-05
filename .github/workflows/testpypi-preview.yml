@@ -3,7 +3,8 @@ name: TestPyPI Preview 🧪
 on:
   push:
     branches:
-      - 'releases/**'
+     - 'releases/release_*'
+
 
 permissions:
   contents: read
