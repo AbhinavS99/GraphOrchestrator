@@ -55,6 +55,11 @@ jobs:
           git tag $EXPECTED
           git push origin $EXPECTED
 
+      - name: Set Git author identity
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
       - name: Bump version in setup.cfg
         run: |
           sed -i "s/^version = .*/version = ${{ github.event.inputs.version }}/" setup.cfg
