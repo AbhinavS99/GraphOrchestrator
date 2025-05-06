@@ -19,7 +19,7 @@ def wrap_constants(message: str, level: str = "INFO", **kwargs: Any) -> Dict[str
         dict: JSON-compatible structured log dictionary.
     """
     base = {
-        LC.TIMESTAMP: datetime.datetime.utcnow().isoformat(timespec="milliseconds")
+        LC.TIMESTAMP: datetime.datetime.now().isoformat(timespec="milliseconds")
         + "Z",
         LC.LEVEL: level.upper(),
         LC.MESSAGE: message,
