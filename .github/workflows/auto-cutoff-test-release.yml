@@ -45,8 +45,8 @@ jobs:
           git config user.email "github-actions@github.com"
           git checkout -b ${{ steps.meta.outputs.branch }}
 
-          sed -i "s/^version = .*/version = 0.2.0.dev${{ steps.meta.outputs.suffix }}/" setup.cfg
-          git commit -am "🤖 Bump version to 0.2.0.dev${{ steps.meta.outputs.suffix }}"
+          sed -i "s/^version = .*/version = 0.2.0.test${{ steps.meta.outputs.suffix }}/" setup.cfg
+          git commit -am "🤖 Bump version to 0.2.0.test${{ steps.meta.outputs.suffix }}"
           git push origin ${{ steps.meta.outputs.branch }}
 
       - name: Setup Python
