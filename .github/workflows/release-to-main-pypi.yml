@@ -1,0 +1,93 @@
+name: Release to Main PyPI 🚀
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New PyPI version (e.g. 0.3.0)'
+        required: true
+      tag:
+        description: 'Release tag (e.g. ready-release2505.1)'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify branch is test_releases/*
+        run: |
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "Current branch: $CURRENT_BRANCH"
+          if [[ ! "$CURRENT_BRANCH" =~ ^test_releases/release_ ]]; then
+            echo "❌ You must run this from a test_releases/* branch."
+            exit 1
+          fi
+
+      - name: Extract YYMM.x from test branch
+        id: extract
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          ID=$(echo $BRANCH | sed -E 's/^test_releases\/release_//')
+          echo "id=$ID" >> $GITHUB_OUTPUT
+
+      - name: Create release branch
+        run: |
+          git checkout -b releases/release_${{ steps.extract.outputs.id }}
+          git push origin releases/release_${{ steps.extract.outputs.id }}
+
+      - name: Validate and push tag
+        run: |
+          EXPECTED="ready-release${{ steps.extract.outputs.id }}"
+          if [[ "${{ github.event.inputs.tag }}" != "$EXPECTED" ]]; then
+            echo "❌ Tag mismatch. Expected: $EXPECTED"
+            exit 1
+          fi
+          git tag $EXPECTED
+          git push origin $EXPECTED
+
+      - name: Bump version in setup.cfg
+        run: |
+          sed -i "s/^version = .*/version = ${{ github.event.inputs.version }}/" setup.cfg
+          git commit -am "🔖 Release ${{ github.event.inputs.version }}"
+          git push
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and build
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload dist/*
+
+      - name: Create PR from test → release branch
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          source: ${{ github.ref_name }}
+          target: releases/release_${{ steps.extract.outputs.id }}
+          title: "🔁 Promote ${{ github.ref_name }} to release branch"
+          body: |
+            Promotes `${{ github.ref_name }}` → `releases/release_${{ steps.extract.outputs.id }}`
+            - PyPI version: `${{ github.event.inputs.version }}`
+            - Tag: `${{ github.event.inputs.tag }}`
+            - Auto-created after successful PyPI upload
