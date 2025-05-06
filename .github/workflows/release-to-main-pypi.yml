@@ -84,7 +84,7 @@ jobs:
         run: |
           twine upload dist/*
 
-            - name: Delete tag on failure
+      - name: Delete tag on failure
         if: failure()
         run: |
           echo "❌ Upload failed. Cleaning up tag."
