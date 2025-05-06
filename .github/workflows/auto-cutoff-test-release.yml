@@ -1,0 +1,76 @@
+name: Auto Cutoff and Test Release 🧪
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 16 * * 5'  # Every Friday 10PM IST (4:30PM UTC)
+
+permissions:
+  contents: write
+
+jobs:
+  test-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set prefix and fetch existing test branches
+        id: meta
+        run: |
+          PREFIX=$(date -u '+%y%m')
+          echo "prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+
+          EXISTING=$(git ls-remote --heads origin "refs/heads/test_releases/release_${PREFIX}.*" \
+            | awk -F'release_' '{print $2}' | awk -F'/' '{print $1}')
+
+          if [ -z "$EXISTING" ]; then
+            NEXT=1
+          else
+            MAX=$(echo "$EXISTING" | sed -E 's/^([0-9]{4})\.([0-9]+)$/\2/' | sort -nr | head -n1)
+            NEXT=$((MAX + 1))
+          fi
+
+          BRANCH_NAME="test_releases/release_${PREFIX}.${NEXT}"
+          SUFFIX="${PREFIX}${NEXT}"
+          echo "branch=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+          echo "suffix=$SUFFIX" >> "$GITHUB_OUTPUT"
+
+      - name: Create test release branch and bump version
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -b ${{ steps.meta.outputs.branch }}
+
+          sed -i "s/^version = .*/version = 0.2.0.dev${{ steps.meta.outputs.suffix }}/" setup.cfg
+          git commit -am "🤖 Bump version to 0.2.0.dev${{ steps.meta.outputs.suffix }}"
+          git push origin ${{ steps.meta.outputs.branch }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and build
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+
+      - name: Upload to TestPyPI
+        id: upload
+        continue-on-error: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+      - name: Delete test branch if upload failed
+        if: steps.upload.outcome != 'success'
+        run: |
+          echo "❌ Upload failed. Deleting ${{ steps.meta.outputs.branch }}"
+          git push origin --delete ${{ steps.meta.outputs.branch }}
