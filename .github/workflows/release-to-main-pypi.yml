@@ -84,15 +84,30 @@ jobs:
         run: |
           twine upload dist/*
 
-      - name: Create PR from test → release branch
+            - name: Delete tag on failure
+        if: failure()
+        run: |
+          echo "❌ Upload failed. Cleaning up tag."
+          git tag -d ${{ github.event.inputs.tag }} || true
+          git push origin :refs/tags/${{ github.event.inputs.tag }} || true
+
+      - name: Delete release branch on failure
+        if: failure()
+        run: |
+          echo "❌ Upload failed. Cleaning up release branch."
+          git push origin --delete releases/release_${{ steps.extract.outputs.id }} || true
+
+      - name: Create PR from release → main
+        if: success()
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          source: ${{ github.ref_name }}
-          target: releases/release_${{ steps.extract.outputs.id }}
-          title: "🔁 Promote ${{ github.ref_name }} to release branch"
+          source: releases/release_${{ steps.extract.outputs.id }}
+          target: main
+          title: "🚀 Promote releases/release_${{ steps.extract.outputs.id }} to main"
           body: |
-            Promotes `${{ github.ref_name }}` → `releases/release_${{ steps.extract.outputs.id }}`
+            This PR promotes the release branch to `main`.
             - PyPI version: `${{ github.event.inputs.version }}`
             - Tag: `${{ github.event.inputs.tag }}`
-            - Auto-created after successful PyPI upload
+            - Auto-generated after successful release
+
