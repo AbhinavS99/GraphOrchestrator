@@ -64,7 +64,7 @@ jobs:
         run: |
           sed -i "s/^version = .*/version = ${{ github.event.inputs.version }}/" setup.cfg
           git commit -am "🔖 Release ${{ github.event.inputs.version }}"
-          git push
+          git push --set-upstream origin releases/release_${{ steps.extract.outputs.id }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
