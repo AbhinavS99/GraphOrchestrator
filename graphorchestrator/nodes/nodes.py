@@ -261,17 +261,10 @@ class AINode(ProcessingNode):
     """
 
     def __init__(
-        self,
-        node_id: str,
-        description: str,
-        model_action: Callable[[State], State],
-        response_format: Optional[str] = None,
-        response_parser: Optional[Callable[[State], Any]] = None,
+        self, node_id: str, description: str, model_action: Callable[[State], State]
     ) -> None:
         super().__init__(node_id, model_action)
         self.description = description
-        self.response_format = response_format
-        self.response_parser = response_parser
 
         GraphLogger.get().info(
             **wrap_constants(
@@ -281,11 +274,7 @@ class AINode(ProcessingNode):
                     LC.NODE_ID: self.node_id,
                     LC.NODE_TYPE: "AINode",
                     LC.ACTION: "node_created",
-                    LC.CUSTOM: {
-                        "description": description,
-                        "response_format": response_format,
-                        "has_parser": bool(response_parser),
-                    },
+                    LC.CUSTOM: {"description": description},
                 },
             )
         )
