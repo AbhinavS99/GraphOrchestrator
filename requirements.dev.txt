@@ -1,0 +1,7 @@
+pytest
+pytest-asyncio
+coverage
+build
+twine
+black
+pre-commit
